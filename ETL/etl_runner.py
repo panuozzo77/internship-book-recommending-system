@@ -1,5 +1,7 @@
 # ETL/etl_runner.py
 import logging
+import os
+
 from .config_loader import load_etl_config # Relative import
 from .data_loader import load_all_sources   # Relative import
 from .data_joiner import perform_joins    # Relative import
@@ -50,7 +52,7 @@ def run_etl_pipeline(etl_config_path, app_config):
     # Adjust paths in etl_mapping_config to be absolute, based on PathRegistry
     # This is important if paths in etl_mapping_config.sources are relative
     registry = PathRegistry()
-    raw_datasets_base_dir = registry.get_path('raw_datasets_dir', '.') # Default to current if not set
+    raw_datasets_base_dir = registry.get_path('raw_datasets_dir') # Default to current if not set
 
     for source in etl_mapping_config.get("sources", []):
         if not os.path.isabs(source['path']):

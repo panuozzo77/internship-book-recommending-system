@@ -56,11 +56,11 @@ if __name__ == "__main__":
     # Example: Using goodreads_books.json (which is often JSON Lines)
     # PATH = "./downloaded_datasets/partial/goodreads_books.json.gz" # If gzipped
     ORIGINAL_FOLDER = '/home/cristian/Documents/dataset'
-    FILE_NAME = "../downloaded_datasets/partial/goodreads_book_authors.json"  # Assuming unzipped
+    FILE_NAME = "goodreads_reviews_dedup.json"  # Assuming unzipped
 
     PATH = ORIGINAL_FOLDER + '/' + FILE_NAME
 
-    SHRUNKEN_DATA_FILE = FILE_NAME
+    SHRUNKEN_DATA_FILE = '../downloaded_datasets/partial/' + FILE_NAME
     LINES_TO_KEEP = 100
 
     # Determine file type (simplified)

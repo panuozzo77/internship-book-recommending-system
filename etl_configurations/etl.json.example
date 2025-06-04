@@ -1,0 +1,153 @@
+{
+  "global_settings": {
+    "sample_n_rows": null  // Process all rows. Set to an integer (e.g., 1000) for testing.
+  },
+  "sources": [
+    {
+      "alias": "raw_books_data",
+      "path": "goodreads_books.json", // Relative to 'raw_datasets_dir' defined in main config.json
+      "format": "json_lines",
+      "columns_to_rename": { // Optional
+        "title_without_series": "main_book_title"
+      }
+    },
+    {
+      "alias": "raw_authors_metadata",
+      "path": "goodreads_book_authors.json",
+      "format": "json_lines"
+    },
+    {
+      "alias": "raw_works_metadata",
+      "path": "goodreads_book_works.json",
+      "format": "json_lines"
+    }
+  ],
+  "joins": [
+    // Example 1: Join books with their work information
+    {
+      "result_alias": "books_enriched_with_works",
+      "left_df_alias": "raw_books_data",
+      "right_df_alias": "raw_works_metadata",
+      "left_on": "work_id",
+      "right_on": "work_id",
+      "how": "left", // Keep all books, add work info if available
+      "suffixes": ["_book", "_work"] // e.g., ratings_count_book, ratings_count_work
+    }
+    // Example 2: If authors in raw_books_data was just an author_id
+    // and you wanted to join with raw_authors_metadata.
+    // However, goodreads_books.json has authors as a list of dicts,
+    // so embedding or a separate BookAuthors link is better.
+    // This join example is more for if 'authors' was a simple ID.
+    // {
+    //   "result_alias": "books_with_author_names",
+    //   "left_df_alias": "raw_books_data", // Assuming it has a single 'author_id_fk' column
+    //   "right_df_alias": "raw_authors_metadata",
+    //   "left_on": "author_id_fk",
+    //   "right_on": "author_id",
+    //   "how": "left",
+    //   "suffixes": ["_book", "_author"]
+    // }
+  ],
+  "targets": [
+    {
+      "collection_name": "books",
+      "source_dataframe_alias": "books_enriched_with_works", // Use the joined DataFrame
+      "write_mode": "upsert", // "insert" or "upsert"
+      "upsert_key_fields": ["book_id"], // Fields to query for existing doc during upsert
+      "batch_size": 500,
+      "document_structure": [
+        // --- Core Book Info ---
+        {"source_column": "book_id_book", "target_field": "book_id", "type": "string", "is_primary_key": true},
+        {"source_column": "main_book_title", "target_field": "title", "type": "string"},
+        {"source_column": "isbn_book", "target_field": "isbn", "type": "string", "default_value": null},
+        {"source_column": "isbn13_book", "target_field": "isbn13", "type": "string", "default_value": null},
+        {"source_column": "asin_book", "target_field": "asin", "type": "string", "default_value": null},
+        {"source_column": "publisher_book", "target_field": "publisher", "type": "string"},
+        {
+          "target_field": "publication_date", "type": "date",
+          "transform": "combine_date_parts", // Custom function in mongodb_mapper.py
+          "source_columns": ["publication_year_book", "publication_month_book", "publication_day_book"]
+        },
+        {"source_column": "language_code_book", "target_field": "language", "type": "string"},
+        {"source_column": "edition_information_book", "target_field": "edition_info", "type": "string"},
+        {"source_column": "format_book", "target_field": "format", "type": "string"},
+        {"source_column": "is_ebook_book", "target_field": "is_ebook", "type": "boolean"},
+        {"source_column": "description_book", "target_field": "description", "type": "string"},
+        {"source_column": "num_pages_book", "target_field": "page_count", "type": "integer", "default_value": 0},
+        {"source_column": "image_url_book", "target_field": "cover_url", "type": "string"},
+        {"source_column": "link_book", "target_field": "goodreads_link", "type": "string"},
+        // --- Ratings Info (from book edition) ---
+        {"source_column": "average_rating_book", "target_field": "average_rating", "type": "float"},
+        {"source_column": "ratings_count_book", "target_field": "ratings_count", "type": "integer"},
+        {"source_column": "text_reviews_count_book", "target_field": "text_reviews_count", "type": "integer"},
+        // --- Work Info (from joined raw_works_metadata) ---
+        {"source_column": "work_id_book", "target_field": "work_id", "type": "string"}, // work_id also present in book
+        {"source_column": "original_title_work", "target_field": "original_work_title", "type": "string"},
+        {"source_column": "original_publication_year_work", "target_field": "original_work_publication_year", "type": "integer"},
+        {"source_column": "media_type_work", "target_field": "work_media_type", "type": "string"},
+        {"source_column": "rating_dist_work", "target_field": "work_rating_distribution", "type": "string"}, // Could be parsed into dict
+        // --- Complex/Nested Fields (Authors & Shelves from raw_books_data) ---
+        {
+          "source_column": "authors_book", // This is the list of dicts: [{"author_id": "10333", "role": ""}, ...]
+          "target_field": "authors_embedded",
+          "type": "list_of_objects",
+          "object_mapping": [ // Defines how each dict in the source_column list is transformed
+            {"source_key": "author_id", "target_key": "id", "type": "string"},
+            {"source_key": "role", "target_key": "role", "type": "string", "default_value": ""}
+          ]
+        },
+        {
+          "source_column": "popular_shelves_book", // List of dicts: [{"count": "58", "name": "to-read"}, ...]
+          "target_field": "shelves",
+          "type": "list_of_objects",
+          "object_mapping": [
+            {"source_key": "count", "target_key": "count", "type": "integer"}, // Type casting for sub-fields
+            {"source_key": "name", "target_key": "name", "type": "string"}
+          ]
+        },
+        {
+          "source_column": "series_book", // List of series_ids: ["189911"]
+          "target_field": "series_ids", // Storing as a simple list of IDs for now
+          "type": "list_of_strings" // Requires _cast_value to handle this or a custom transform
+        },
+        // --- System Generated ---
+        {
+          "target_field": "last_etl_update_at", "type": "date",
+          "value": "NOW()" // Special value to be interpreted by mapper as current datetime
+        }
+      ],
+      "indexes": [
+        {"field": "book_id", "unique": true, "name": "book_id_unique_idx"},
+        {"field": "work_id", "unique": false},
+        {"field": "authors_embedded.id", "unique": false}, // Indexing a field within an array of objects
+        {"field": "shelves.name", "unique": false},
+        {"field": "main_book_title", "type": "text"}, // For text search (MongoDB specific index type)
+        {"field": "publication_year_book", "unique": false} // Assuming this column exists after suffixing
+      ]
+    },
+    {
+      "collection_name": "authors",
+      "source_dataframe_alias": "raw_authors_metadata", // Using the raw, unjoined author data
+      "write_mode": "upsert",
+      "upsert_key_fields": ["author_id"],
+      "document_structure": [
+        {"source_column": "author_id", "target_field": "author_id", "type": "string", "is_primary_key": true},
+        {"source_column": "name", "target_field": "name", "type": "string"},
+        {"source_column": "average_rating", "target_field": "avg_rating_on_goodreads", "type": "float"},
+        {"source_column": "text_reviews_count", "target_field": "total_text_reviews", "type": "integer"},
+        {"source_column": "ratings_count", "target_field": "total_ratings_on_goodreads", "type": "integer"}
+      ],
+      "indexes": [
+        {"field": "author_id", "unique": true},
+        {"field": "name", "type": "text"}
+      ]
+    }
+    // TODO: Add target configurations for:
+    // - works (from raw_works_metadata)
+    // - series (from goodreads_book_series.json, might need a join or lookup for book_ids in a series)
+    // - users (from user_id_map.csv initially, then enrich from interactions/reviews)
+    // - interactions (from goodreads_interactions.csv)
+    // - reviews (from goodreads_reviews_dedup.json)
+    // - book_genres (derived from popular_shelves or goodreads_book_genres_initial.json)
+  ]
+}

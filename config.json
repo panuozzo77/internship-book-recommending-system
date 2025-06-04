@@ -21,6 +21,6 @@
         "etl_configs_dir": "etl_configurations/"
     },
     "etl_settings": {
-        "default_etl_config": "default_etl_mapping.json"
+        "default_etl_config": "default.json"
     }
 }
