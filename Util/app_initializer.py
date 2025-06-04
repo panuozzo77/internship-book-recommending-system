@@ -1,159 +1,139 @@
-# Util/Main/app_initializer.py
-
+# Util/app_initializer.py
+import argparse
 import os
 import json
-import argparse
+# import argparse # No longer needed here directly for parsing, ArgHandler does it
 import logging
-from Util.PathRegistry import PathRegistry  # Assuming PathRegistry is in Util/PathRegistry.py
+import sys
+from .PathRegistry import PathRegistry
+from .ArgHandler import ArgHandler # Import the new handler
 
 DEFAULT_CONFIG_FILENAME = "config.json"
-DEFAULT_ETL_CONFIG_FILENAME = "default_etl_mapping.json"  # For later use
-
-# Global application configuration dictionary
 APP_CONFIG = {}
 
+# --- Helper Functions for Initialization (largely the same as before) ---
+def _setup_initial_logging(): # No change
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s - %(levelname)s - PRE-CONFIG - %(module)s - %(message)s",
+                        force=True)
+    logging.info("Initial basic logging configured.")
 
-def create_default_config(filepath):
-    """Creates a default configuration file at the specified path."""
-    default_config_data = {
-        "project_name": "GoodreadsRecommender",
-        "version": "0.1.0",
-        "author": "Your Name/Group",
-        "logging": {
-            "level": "INFO",
-            "format": "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
-        },
-        "database": {
-            "type": "mongodb",
-            "uri": "mongodb://localhost:27017/",
-            "db_name": "goodreads_project_db",
-            "default_books_collection": "books",
-            "default_authors_collection": "authors",
-            "default_users_collection": "users",
-            "default_interactions_collection": "interactions"
-        },
-        "data_paths": {
-            # Relative to project root, PathRegistry can resolve these
-            "raw_datasets_dir": "downloaded_datasets/partial/",
-            "processed_datasets_dir": "processed_data/",
-            "etl_configs_dir": "etl_configurations/"
-        },
-        "etl_settings": {
-            "default_etl_config": DEFAULT_ETL_CONFIG_FILENAME  # Name of the default ETL mapping file
-        }
-    }
-    try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(default_config_data, f, indent=4, ensure_ascii=False)
-        logging.info(f"Default configuration file created at: {filepath}")
-        return default_config_data
-    except IOError as e:
-        logging.error(f"Error creating default configuration file at {filepath}: {e}")
-        return None
+def _ensure_project_root(registry: PathRegistry): # No change
+    project_root = registry.get_path('root')
+    if not project_root:
+        logging.critical("Project root path not set in PathRegistry.")
+        guessed_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        registry.set_path('root', guessed_project_root)
+        logging.warning(f"Project root was not set by caller, auto-guessed to: {guessed_project_root}")
+        return guessed_project_root
+    return project_root
 
+# _parse_cli_arguments is now handled by ArgHandler
 
-def load_app_config(filepath):
-    """Loads the application configuration from the specified JSON file."""
+def _determine_app_config_path(project_root: str, cli_custom_config_arg: str = None): # Modified to take arg
+    """Determines the path to the application's main configuration file."""
+    if cli_custom_config_arg: # Check if the argument from ArgHandler.args.config is present
+        logging.info(f"Custom application config path provided via CLI: {cli_custom_config_arg}")
+        if os.path.isabs(cli_custom_config_arg):
+            return cli_custom_config_arg
+        else:
+            return os.path.join(os.getcwd(), cli_custom_config_arg)
+    else:
+        return os.path.join(project_root, DEFAULT_CONFIG_FILENAME)
+
+def load_app_config_from_file(filepath: str): # No change
     global APP_CONFIG
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             APP_CONFIG = json.load(f)
-        logging.info(f"Application configuration loaded from: {filepath}")
+        logging.info(f"Application configuration loaded successfully from: {filepath}")
         return True
     except FileNotFoundError:
-        logging.warning(f"Configuration file not found: {filepath}. Attempting to create a default.")
+        logging.debug(f"Configuration file not found at: {filepath}")
         return False
     except json.JSONDecodeError as e:
         logging.error(f"Error decoding configuration JSON from {filepath}: {e}")
-        APP_CONFIG = {}  # Reset to empty if load fails
+        APP_CONFIG = {}
         return False
     except Exception as e:
         logging.error(f"An unexpected error occurred while loading configuration from {filepath}: {e}")
         APP_CONFIG = {}
         return False
 
+def create_default_config_file(filepath: str): # No change
+    default_config_data = {
+        "project_name": "GoodreadsRecommender",
+        "version": "0.1.0",
+        "author": "Your Name/Group",
+        "logging": {
+            "level": "INFO",
+            "format": "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
+        },
+        "database": {
+            "type": "mongodb",
+            "uri": "mongodb://localhost:27017/",
+            "db_name": "goodreads_project_db"
+        },
+        "data_paths": {
+            "raw_datasets_dir": "downloaded_datasets/partial/",
+            "processed_datasets_dir": "processed_data/",
+            "etl_configs_dir": "etl_configurations/"
+        },
+        "etl_settings": {
+            "default_etl_config_name": "example_book_load_config.json"
+        }
+    }
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(default_config_data, f, indent=4, ensure_ascii=False)
+        logging.info(f"Default configuration file created at: {filepath}")
+        return True
+    except IOError as e:
+        logging.error(f"Error creating default configuration file at {filepath}: {e}")
+        return False
 
-def setup_logging(config=None):
-    """Configures logging based on the loaded configuration."""
-    if config is None:  # Fallback if APP_CONFIG is not yet populated or logging config missing
-        log_config = {"level": "INFO", "format": "%(asctime)s - %(levelname)s - %(module)s - %(message)s"}
-    else:
-        log_config = config.get("logging",
-                                {"level": "INFO", "format": "%(asctime)s - %(levelname)s - %(module)s - %(message)s"})
-
-    log_level = getattr(logging, log_config.get("level", "INFO").upper(), logging.INFO)
-    log_format = log_config.get("format", "%(asctime)s - %(levelname)s - %(module)s - %(message)s")
-
-    # Remove any existing handlers to avoid duplicate logs if called multiple times
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
-
-    logging.basicConfig(level=log_level, format=log_format)
-    logging.info("Logging configured.")
-
-
-def initialize_app():
+def _load_or_create_app_config(config_filepath: str, project_root_for_default: str, is_custom_path_from_cli: bool): # No change
     global APP_CONFIG
-    registry = PathRegistry()
-
-    # 0. Basic logging setup first
-    setup_logging() # Call without APP_CONFIG first for early messages
-
-    project_root = registry.get_path('root')
-    if not project_root:
-        logging.critical("Project root path not set in PathRegistry. This should be set by the calling script (e.g., run.py).")
-        # Attempt to guess, but this is risky
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # Assumes Util is one level down
-        registry.set_path('root', project_root)
-        logging.warning(f"Project root was not set, auto-guessed to: {project_root}")
-
-    config_filepath_cli = None # For --custom_config later
-
-    # Argument parsing (basic for now)
-    parser = argparse.ArgumentParser(description="Goodreads Recommender Application")
-    parser.add_argument("--config", type=str, help="Path to a custom application configuration file (config.json).")
-    parser.add_argument("--load_etl", type=str, metavar="ETL_CONFIG_NAME",
-                        help="Name of the ETL mapping JSON file (e.g., my_etl.json) located in etl_configurations_dir, or an absolute path to an ETL config file.")
-    # Add more arguments here
-    args = parser.parse_args()
-
-    if args.config:
-        logging.info(f"CLI argument --config provided: {args.config}")
-        config_filepath_cli = args.config # This could be absolute or relative to CWD
-
-    # Determine primary config file path
-    if config_filepath_cli:
-        if os.path.isabs(config_filepath_cli):
-            primary_config_filepath = config_filepath_cli
-        else:
-            primary_config_filepath = os.path.join(os.getcwd(), config_filepath_cli) # Relative to current working dir
+    logging.info(f"Attempting to load application configuration from: {config_filepath}")
+    if load_app_config_from_file(config_filepath):
+        return True
     else:
-        primary_config_filepath = os.path.join(project_root, DEFAULT_CONFIG_FILENAME)
-
-    logging.info(f"Attempting to load primary application configuration from: {primary_config_filepath}")
-
-    # Load configuration or create default
-    if not load_app_config(primary_config_filepath): # Tries to load
-        if not config_filepath_cli: # Only create default if no custom config was specified
-            default_path_to_create = os.path.join(project_root, DEFAULT_CONFIG_FILENAME)
-            logging.info(f"Primary config not found at '{primary_config_filepath}'. Creating default at '{default_path_to_create}'.")
-            if create_default_config(default_path_to_create):
-                load_app_config(default_path_to_create) # Load the newly created default
+        if not is_custom_path_from_cli:
+            default_path_to_create = os.path.join(project_root_for_default, DEFAULT_CONFIG_FILENAME)
+            if config_filepath == default_path_to_create: # Ensure we are trying to create the default
+                 logging.info(f"Primary config not found at '{config_filepath}'. Creating default.")
+                 if create_default_config_file(default_path_to_create):
+                     return load_app_config_from_file(default_path_to_create)
+                 else:
+                     logging.critical(f"Failed to create a default configuration file at {default_path_to_create}.")
             else:
-                logging.critical("Failed to load or create a default configuration file. Application may not function correctly.")
-                setup_logging() # Ensure basic logging if all fails
-                return # Exit initialization if config is essential
+                logging.warning(f"Config not found at '{config_filepath}', and it's not the expected default path. Not creating default here.")
         else:
-            logging.critical(f"Specified custom config '{primary_config_filepath}' not found. Cannot proceed.")
-            setup_logging()
-            return
+            logging.critical(f"Specified custom config '{config_filepath}' not found or failed to load.")
+        return False
 
+def _reconfigure_logging_from_app_config(): # No change
+    if not APP_CONFIG:
+        logging.warning("APP_CONFIG is empty. Using default logging settings.")
+        log_settings = None
+    else:
+        log_settings = APP_CONFIG.get("logging")
 
-    # Re-configure logging based on loaded configuration
-    setup_logging(APP_CONFIG)
+    if log_settings:
+        level_str = log_settings.get("level", "INFO").upper()
+        level = getattr(logging, level_str, logging.INFO)
+        fmt = log_settings.get("format", "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s")
+    else:
+        level = logging.INFO
+        fmt = "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
 
-    # Register other important paths from config into PathRegistry
+    for handler in logging.root.handlers[:]: logging.root.removeHandler(handler)
+    logging.basicConfig(level=level, format=fmt, force=True)
+    logging.info(f"Logging reconfigured to level {logging.getLevelName(level)} from application config.")
+
+def _register_configured_paths(registry: PathRegistry, project_root: str): # No change
     if APP_CONFIG and "data_paths" in APP_CONFIG:
+        logging.debug("Registering configured data paths...")
         for alias, rel_path in APP_CONFIG["data_paths"].items():
             full_path = os.path.join(project_root, rel_path)
             registry.set_path(alias, full_path)
@@ -163,42 +143,66 @@ def initialize_app():
                     logging.info(f"Created directory: {full_path}")
                 except OSError as e:
                     logging.error(f"Could not create directory {full_path}: {e}")
-        logging.debug(f"Registered data paths: {registry.all_paths()}")
-
-    logging.info(f"Application '{APP_CONFIG.get('project_name', 'N/A')}' version '{APP_CONFIG.get('version', 'N/A')}' initialized.")
-
-    # --- Handle ETL Loading ---
-    if args.load_etl:
-        etl_config_name_or_path = args.load_etl
-        logging.info(f"ETL load requested for configuration: '{etl_config_name_or_path}'")
-
-        # Dynamically import here to ensure sys.path is set up by run.py
-        try:
-            from ETL.etl_runner import run_etl_pipeline
-        except ImportError as e:
-            logging.critical(f"Could not import ETL runner. Ensure ETL modules are correctly placed and project root is in PYTHONPATH. Error: {e}")
-            return
-
-        etl_config_path_to_run = None
-        if os.path.isabs(etl_config_name_or_path):
-            etl_config_path_to_run = etl_config_name_or_path
-        else:
-            # Assume it's a name relative to etl_configs_dir
-            etl_configs_base_dir = registry.get_path('etl_configs_dir')
-            if not etl_configs_base_dir:
-                logging.error("Path for 'etl_configs_dir' not found in PathRegistry. Cannot resolve relative ETL config path.")
-                return
-            etl_config_path_to_run = os.path.join(etl_configs_base_dir, etl_config_name_or_path)
-
-        if os.path.exists(etl_config_path_to_run):
-            logging.info(f"Executing ETL pipeline with mapping config: {etl_config_path_to_run}")
-            try:
-                run_etl_pipeline(etl_config_path_to_run, APP_CONFIG)
-            except Exception as e:
-                logging.critical(f"ETL pipeline failed for '{etl_config_path_to_run}'. Error: {e}", exc_info=True)
-        else:
-            logging.error(f"ETL mapping configuration file not found: {etl_config_path_to_run}")
+        logging.debug(f"PathRegistry contents: {registry.all_paths()}")
     else:
-        logging.info("No specific ETL action requested via CLI arguments.")
+        logging.warning("No 'data_paths' section found in APP_CONFIG or APP_CONFIG is empty.")
 
-    # Other actions based on CLI arguments can be handled here
+# _handle_etl_load_action is now part of ArgHandler.py
+
+# --- Main Initialization Function ---
+def initialize_app():
+    """
+    Initializes the application:
+    1. Sets up initial logging.
+    2. Ensures project root is defined.
+    3. Instantiates ArgHandler which defines CLI arguments.
+    4. ArgHandler parses CLI arguments.
+    5. Determines and loads the main application configuration (config.json), creating a default if necessary.
+    6. Reconfigures logging based on loaded app config.
+    7. Registers data paths from app config.
+    8. ArgHandler dispatches actions based on parsed CLI arguments.
+    """
+    _setup_initial_logging()
+
+    registry = PathRegistry()
+    project_root = _ensure_project_root(registry)
+
+    # First, parse args to see if a custom config path is provided
+    # We need a temporary ArgHandler instance or a static method to parse args
+    # before APP_CONFIG is fully loaded, if its parser depends on APP_CONFIG.
+    # For simplicity, let's assume _create_parser in ArgHandler doesn't strictly need APP_CONFIG yet for its basic structure.
+    # Or, we can parse only the --config argument first.
+    # Let's try to load a minimal APP_CONFIG for ArgHandler or pass None
+
+    # Step 1: Parse CLI arguments to know if a custom config.json is specified
+    # The ArgHandler will be fully initialized after APP_CONFIG is loaded.
+    # For now, we only need the value of args.config from a preliminary parse.
+    prelim_parser = argparse.ArgumentParser(add_help=False) # Temporary parser for --config only
+    prelim_parser.add_argument("--config", type=str)
+    cli_args_known, _ = prelim_parser.parse_known_args() # Parse only known args, ignore others for now
+
+    app_config_path = _determine_app_config_path(project_root, cli_args_known.config)
+
+    if not _load_or_create_app_config(app_config_path, project_root, bool(cli_args_known.config)):
+        logging.critical("Application configuration could not be established. Initialization aborted.")
+        return # Basic logging is set, exit
+
+    _reconfigure_logging_from_app_config() # Now use the loaded APP_CONFIG
+
+    # Now that APP_CONFIG is loaded, fully initialize ArgHandler
+    arg_handler = ArgHandler(APP_CONFIG, registry)
+    args = arg_handler.parse_arguments() # Parse all defined arguments
+
+    # Re-check if args.config was provided, as it influences APP_CONFIG source.
+    # The logic for _determine_app_config_path and _load_or_create_app_config already handled this.
+    # If args.config led to a different app_config_path that was successfully loaded,
+    # APP_CONFIG is now from that custom file.
+
+    _register_configured_paths(registry, project_root)
+
+    logging.info(f"Application '{APP_CONFIG.get('project_name', 'N/A')}' version '{APP_CONFIG.get('version', 'N/A')}' fully initialized.")
+
+    # Dispatch actions based on parsed arguments
+    arg_handler.handle_actions()
+
+    logging.debug("initialize_app finished.")
