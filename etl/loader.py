@@ -3,8 +3,8 @@ import csv
 import os
 import pymongo
 
-from ETL.MongoDBConnection import MongoDBConnection
-from Util.PathRegistry import PathRegistry
+from OLD.ETL.MongoDBConnection import MongoDBConnection
+from OLD.Util.PathRegistry import PathRegistry
 
 
 def convert_type(value, to_type):

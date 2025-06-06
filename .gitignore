@@ -129,7 +129,7 @@ secrets.*
 !.vscode/extensions.json
 
 # Project-specific
-etl_configurations/local_*
+OLD/etl_configurations/local_*
 config/local_*
 
 ### Documentation ###
