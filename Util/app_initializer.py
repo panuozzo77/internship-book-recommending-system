@@ -182,6 +182,7 @@ def initialize_app():
     cli_args_known, _ = prelim_parser.parse_known_args() # Parse only known args, ignore others for now
 
     app_config_path = _determine_app_config_path(project_root, cli_args_known.config)
+    registry.set_path('config_file', app_config_path)
 
     if not _load_or_create_app_config(app_config_path, project_root, bool(cli_args_known.config)):
         logging.critical("Application configuration could not be established. Initialization aborted.")

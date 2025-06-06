@@ -6,7 +6,7 @@ from .config_loader import load_etl_config # Relative import
 from .data_loader import load_all_sources   # Relative import
 from .data_joiner import perform_joins    # Relative import
 from .mongodb_mapper import load_to_mongodb # Relative import
-from .DatabaseManager import DatabaseManager # Relative import
+from .MongoDBConnection import DatabaseManager # Relative import
 from Util.PathRegistry import PathRegistry # Assuming Util is accessible from ETL context
                                           # This might require sys.path manipulation if run directly,
                                           # but should be fine when called from run.py

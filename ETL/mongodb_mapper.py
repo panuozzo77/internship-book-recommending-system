@@ -2,7 +2,7 @@
 import logging
 import pandas as pd
 from datetime import datetime
-from .DatabaseManager import DatabaseManager  # Relative import
+from .MongoDBConnection import DatabaseManager  # Relative import
 
 logger = logging.getLogger(__name__)
 

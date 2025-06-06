@@ -4,23 +4,18 @@
     "author": "Your Name/Group",
     "logging": {
         "level": "INFO",
-        "format": "%(asctime)s - %(levelname)s - %(module)s - %(message)s"
+        "format": "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
     },
     "database": {
         "type": "mongodb",
         "uri": "mongodb://localhost:27017/",
-        "db_name": "goodreads_project_db",
-        "default_books_collection": "books",
-        "default_authors_collection": "authors",
-        "default_users_collection": "users",
-        "default_interactions_collection": "interactions"
+        "db_name": "goodreads_recommender"
     },
     "data_paths": {
         "raw_datasets_dir": "downloaded_datasets/partial/",
-        "processed_datasets_dir": "processed_data/",
         "etl_configs_dir": "etl_configurations/"
     },
-    "etl_settings": {
-        "default_etl_config": "default.json"
-    }
+    "etl_list": [
+        "etl.json"
+    ]
 }
