@@ -3,7 +3,8 @@
     "version": "0.1.0",
     "author": "Your Name/Group",
     "logging": {
-        "level": "INFO",
+        "name": "ProjectLogger",
+        "level": "DEBUG",
         "format": "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
     },
     "database": {

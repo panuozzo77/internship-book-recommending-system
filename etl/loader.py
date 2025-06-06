@@ -3,8 +3,11 @@ import csv
 import os
 import pymongo
 
-from OLD.ETL.MongoDBConnection import MongoDBConnection
-from OLD.Util.PathRegistry import PathRegistry
+from etl.MongoDBConnection import MongoDBConnection
+from core.path_registry import PathRegistry
+from utils.logger import LoggerManager
+
+logger = LoggerManager().get_logger()
 
 
 def convert_type(value, to_type):
@@ -58,7 +61,7 @@ def run_etl(etl_config_path, config_file_path=None):
             etl_config = json.load(f)
 
         if 'collections' not in etl_config:
-            print(f"Warning: No 'collections' key found in {etl_config_path}. Nothing to process.")
+            logger.error(f"Warning: No 'collections' key found in {etl_config_path}. Nothing to process.")
             return
 
         for collection_config in etl_config['collections']:
@@ -67,7 +70,7 @@ def run_etl(etl_config_path, config_file_path=None):
             collection_name = collection_config['collection']
             mapping = collection_config['mapping']
 
-            print(f"Processing file: {file_path} for collection: '{collection_name}'")
+            logger.debug(f"Processing file: {file_path} for collection: '{collection_name}'")
 
             ext = os.path.splitext(file_path)[1].lower()
             data = []
@@ -77,7 +80,7 @@ def run_etl(etl_config_path, config_file_path=None):
             elif ext == '.json':
                 data = load_json(file_path, mapping)
             else:
-                print(f"Error: Unsupported file format: {ext} for {file_name}")
+                logger.error(f"Error: Unsupported file format: {ext} for {file_name}")
                 continue  # Skip to the next collection config
 
             collection = db[collection_name]  # Use the db object from the singleton
@@ -86,20 +89,30 @@ def run_etl(etl_config_path, config_file_path=None):
                     # Check if the collection exists and if it's empty, or decide on update strategy
                     # For simplicity, this example inserts. You might want to upsert or replace.
                     collection.insert_many(data)
-                    print(f"Inserted {len(data)} documents into collection '{collection_name}' from {file_name}")
+                    logger.info(f"Inserted {len(data)} documents into collection '{collection_name}' from {file_name}")
                 except pymongo.errors.BulkWriteError as e:
-                    print(f"Error inserting documents into '{collection_name}': {e.details}")
+                    logger.error(f"Error inserting documents into '{collection_name}': {e.details}")
                 except Exception as e:
-                    print(f"An unexpected error occurred during insertion for '{collection_name}': {e}")
+                    logger.error(f"An unexpected error occurred during insertion for '{collection_name}': {e}")
             else:
-                print(f"No data to insert for collection '{collection_name}' from {file_name}")
+                logger.error(f"No data to insert for collection '{collection_name}' from {file_name}")
 
     except FileNotFoundError:
-        print(f"Error: ETL config file '{etl_config_path}' not found.")
+        logger.error(f"Error: ETL config file '{etl_config_path}' not found.")
     except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in ETL config file '{etl_config_path}'.")
+        logger.error(f"Error: Invalid JSON in ETL config file '{etl_config_path}'.")
     except Exception as e:
-        print(f"An error occurred during ETL process: {e}")
+        logger.error(f"An error occurred during ETL process: {e}")
+
+def exec_all_etl(path_list, config_file_path=None):
+    """
+    Executes ETL processes for all paths in the provided list.
+    :param path_list: List of ETL configuration file paths.
+    :param config_file_path: Optional path to the main configuration file.
+    """
+    for etl_config_path in path_list:
+        logger.info(f"Running ETL for config: {etl_config_path}")
+        run_etl(etl_config_path, config_file_path)
 
 if __name__ == "__main__":
     registry = PathRegistry()

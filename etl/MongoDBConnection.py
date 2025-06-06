@@ -1,56 +1,82 @@
 import json
+from typing import Optional
+
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+
+from core.path_registry import PathRegistry
+from utils.logger import LoggerManager
+
+logger = LoggerManager().get_logger()
 
 class MongoDBConnection:
     _instance = None
     _client = None
     _db = None
 
-    def __new__(cls, config_file_path='config.json'):
+    def __new__(cls, main_app_config_path: Optional[str] = None) -> 'MongoDBConnection':
         if cls._instance is None:
             cls._instance = super(MongoDBConnection, cls).__new__(cls)
-            cls._instance._initialize_connection(config_file_path)
+            # If a path is provided, use it. Otherwise, get it from PathRegistry.
+            config_path_to_use = main_app_config_path
+            if config_path_to_use is None:
+                registry = PathRegistry()  # Get singleton instance
+                config_path_to_use = registry.get_path('config_file')  # Fetch the registered path
+                if config_path_to_use is None:
+                    logger.critical(
+                        "MongoDBConnection: 'config_file' path not found in PathRegistry and no path provided.")
+                    # cls._instance = None # Prevent partial initialization
+                    raise ValueError(
+                        "MongoDBConnection requires 'config_file' to be set in PathRegistry or a path provided to constructor.")
+
+            cls._instance._initialize_connection(config_path_to_use)
         return cls._instance
 
-    def _initialize_connection(self, config_file_path):
+    def _initialize_connection(self, main_app_config_path: str):
+        # This method remains largely the same as in the previous good version,
+        # using main_app_config_path to open and read the main config.json
+        logger.debug(f"MongoDBConnection initializing with app config: {main_app_config_path}")
         try:
-            with open(config_file_path, 'r') as f:
-                config = json.load(f)
+            with open(main_app_config_path, 'r', encoding='utf-8') as f:
+                app_config = json.load(f)
 
-            db_config = config['database']
-            mongo_uri = db_config['uri']
-            db_name = db_config['db_name']
+            db_settings = app_config.get('database', {})
+            mongo_uri = db_settings.get('uri')
+            db_name_for_connection = db_settings.get('db_name') # From main config.json
 
-            if not db_name:
-                raise ValueError("Database name (db_name_override) is not specified in the config file.")
+            if not mongo_uri: raise ValueError("MongoDB URI not in app config's database section.")
+            if not db_name_for_connection: raise ValueError("Database name ('db_name') not in app config's database section.")
 
-            self.__class__._client = MongoClient(mongo_uri)
-            # Optional: Ping to verify connection immediately
+            self.__class__._client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
             self.__class__._client.admin.command('ismaster')
-            print("Successfully connected to MongoDB!")
-            self.__class__._db = self.__class__._client[db_name]
-            print(f"Using database: {self.__class__._db.name}")
+            self.__class__._db = self.__class__._client[db_name_for_connection]
+            logger.info(f"MongoDBConnection successfully connected to default DB: {self.__class__._db.name} specified in {main_app_config_path}")
 
         except FileNotFoundError:
-            print(f"Error: Config file '{config_file_path}' not found.")
-            self.__class__._instance = None # Reset instance on failure
+            logger.error(f"Error: Main app config file '{main_app_config_path}' not found for MongoDBConnection.")
+            # self.__class__._instance = None # Don't nullify instance, just connection state
+            self.__class__._client = None
+            self.__class__._db = None
             raise
         except json.JSONDecodeError:
-            print(f"Error: Invalid JSON in '{config_file_path}'.")
-            self.__class__._instance = None
+            logger.error(f"Error: Invalid JSON in main app config '{main_app_config_path}'.")
+            self.__class__._client = None
+            self.__class__._db = None
             raise
-        except ConnectionFailure:
-            print("MongoDB connection failed.")
-            self.__class__._instance = None
+        except ConnectionFailure as e:
+            logger.critical(f"MongoDB connection failed using config {main_app_config_path}: {e}")
+            self.__class__._client = None
+            self.__class__._db = None
             raise
-        except ValueError as ve:
-            print(f"Configuration Error: {ve}")
-            self.__class__._instance = None
+        except ValueError as ve: # Catch config value errors
+            logger.critical(f"MongoDB Configuration Error from {main_app_config_path}: {ve}")
+            self.__class__._client = None
+            self.__class__._db = None
             raise
         except Exception as e:
-            print(f"An unexpected error occurred during connection: {e}")
-            self.__class__._instance = None
+            logger.critical(f"An unexpected error occurred during MongoDB connection using {main_app_config_path}: {e}", exc_info=True)
+            self.__class__._client = None
+            self.__class__._db = None
             raise
 
     def get_client(self):
