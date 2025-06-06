@@ -1,0 +1,148 @@
+# .gitignore for Python/MongoDB/Data Processing Project
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+### Data Files ###
+# Raw datasets (should be downloaded separately)
+downloaded_datasets/
+!downloaded_datasets/README.md
+
+# Processed data
+processed_data/
+!processed_data/README.md
+
+# Temporary files
+*.tmp
+*.temp
+
+# Large files
+*.h5
+*.hdf5
+*.feather
+*.parquet
+
+### MongoDB ###
+# MongoDB data files
+/data/db/
+*.ns
+*.0
+*.1
+*.2
+mongod.lock
+
+# MongoDB logs
+*.log
+*.log.*
+
+### OS Generated ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+### Logs ###
+*.log
+logs/
+
+### Configuration ###
+# Local configuration files
+local_config.json
+secrets.*
+*.env
+.env.local
+
+# VS Code
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Project-specific
+etl_configurations/local_*
+config/local_*
+
+### Documentation ###
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+### Virtual environment ###
+# Already covered by Environments section above
+# but explicitly including common patterns
+bin/
+include/
+lib/
+lib64/
+pyvenv.cfg

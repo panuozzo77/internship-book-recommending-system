@@ -1,10 +1,9 @@
 # Util/ArgHandler.py
 import argparse
-import json
 import logging
 import os
 
-from ETL2.etl_loader import run_etl
+from ETL.etl_loader import run_etl
 
 
 # PathRegistry and APP_CONFIG are passed via __init__

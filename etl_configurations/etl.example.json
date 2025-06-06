@@ -1,0 +1,14 @@
+{
+  "collections": [
+    {
+      "file": "test.json", // This is a placeholder file name, replace with actual file.
+      "collection": "book", // This is the name of the collection in the database.
+      "mapping": {
+        "<SourceField>": { "<RenamedFieldOnDB>": "title", "type": "str" }, // Replace <SourceField> with the actual field name from the source data.
+        "AnnoPubblicazione": { "field": "year", "type": "int" }, // Examples here
+        "Pagine": { "field": "pages", "type": "int" },
+        "Autore": { "field": "author", "type": "str" }
+      }
+    }
+  ]
+}

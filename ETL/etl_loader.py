@@ -105,6 +105,6 @@ if __name__ == "__main__":
     registry = PathRegistry()
     registry.set_path('raw_datasets_dir', '/home/cristian/Documents/projects/pyCharm/tirocinio/downloaded_datasets/partial/')
 
-    etl_config_file_path = '/home/cristian/Documents/projects/pyCharm/tirocinio/etl_configurations/etl.json'
-    config_file_path = '/home/cristian/Documents/projects/pyCharm/tirocinio/config.json'
+    etl_config_file_path = '/etl_configurations/etl.json'
+    config_file_path = '/config.json'
     run_etl(etl_config_file_path, config_file_path)
