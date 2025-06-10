@@ -1,0 +1,342 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_book_works.json",
+      "collection": "goodreads_book_works",
+      "mapping": {
+        "books_count": {
+          "field": "books_count",
+          "type": "str"
+        },
+        "reviews_count": {
+          "field": "reviews_count",
+          "type": "str"
+        },
+        "original_publication_month": {
+          "field": "original_publication_month",
+          "type": "str"
+        },
+        "default_description_language_code": {
+          "field": "default_description_language_code",
+          "type": "str"
+        },
+        "text_reviews_count": {
+          "field": "text_reviews_count",
+          "type": "str"
+        },
+        "best_book_id": {
+          "field": "best_book_id",
+          "type": "str"
+        },
+        "original_publication_year": {
+          "field": "original_publication_year",
+          "type": "str"
+        },
+        "original_title": {
+          "field": "original_title",
+          "type": "str"
+        },
+        "rating_dist": {
+          "field": "rating_dist",
+          "type": "str"
+        },
+        "default_chaptering_book_id": {
+          "field": "default_chaptering_book_id",
+          "type": "str"
+        },
+        "original_publication_day": {
+          "field": "original_publication_day",
+          "type": "str"
+        },
+        "original_language_id": {
+          "field": "original_language_id",
+          "type": "str"
+        },
+        "ratings_count": {
+          "field": "ratings_count",
+          "type": "str"
+        },
+        "media_type": {
+          "field": "media_type",
+          "type": "str"
+        },
+        "ratings_sum": {
+          "field": "ratings_sum",
+          "type": "str"
+        },
+        "work_id": {
+          "field": "work_id",
+          "type": "str"
+        }
+      }
+    },
+    {
+      "file": "goodreads_reviews_dedup.json",
+      "collection": "goodreads_reviews_dedup",
+      "mapping": {
+        "user_id": {
+          "field": "user_id",
+          "type": "str"
+        },
+        "book_id": {
+          "field": "book_id",
+          "type": "str"
+        },
+        "review_id": {
+          "field": "review_id",
+          "type": "str"
+        },
+        "rating": {
+          "field": "rating",
+          "type": "int"
+        },
+        "review_text": {
+          "field": "review_text",
+          "type": "str"
+        },
+        "date_added": {
+          "field": "date_added",
+          "type": "str"
+        },
+        "date_updated": {
+          "field": "date_updated",
+          "type": "str"
+        },
+        "read_at": {
+          "field": "read_at",
+          "type": "str"
+        },
+        "started_at": {
+          "field": "started_at",
+          "type": "str"
+        },
+        "n_votes": {
+          "field": "n_votes",
+          "type": "int"
+        },
+        "n_comments": {
+          "field": "n_comments",
+          "type": "int"
+        }
+      }
+    },
+    {
+      "file": "test.json",
+      "collection": "test",
+      "mapping": {
+        "Titolo": {
+          "field": "Titolo",
+          "type": "str"
+        },
+        "AnnoPubblicazione": {
+          "field": "AnnoPubblicazione",
+          "type": "str"
+        },
+        "Pagine": {
+          "field": "Pagine",
+          "type": "str"
+        },
+        "Autore": {
+          "field": "Autore",
+          "type": "str"
+        }
+      }
+    },
+    {
+      "file": "goodreads_book_genres_initial.json",
+      "collection": "goodreads_book_genres_initial",
+      "mapping": {
+        "book_id": {
+          "field": "book_id",
+          "type": "str"
+        },
+        "genres": {
+          "field": "genres",
+          "type": "dict"
+        }
+      }
+    },
+    {
+      "file": "goodreads_books.json",
+      "collection": "goodreads_books",
+      "mapping": {
+        "isbn": {
+          "field": "isbn",
+          "type": "str"
+        },
+        "text_reviews_count": {
+          "field": "text_reviews_count",
+          "type": "str"
+        },
+        "series": {
+          "field": "series",
+          "type": "list"
+        },
+        "country_code": {
+          "field": "country_code",
+          "type": "str"
+        },
+        "language_code": {
+          "field": "language_code",
+          "type": "str"
+        },
+        "popular_shelves": {
+          "field": "popular_shelves",
+          "type": "list"
+        },
+        "asin": {
+          "field": "asin",
+          "type": "str"
+        },
+        "is_ebook": {
+          "field": "is_ebook",
+          "type": "str"
+        },
+        "average_rating": {
+          "field": "average_rating",
+          "type": "str"
+        },
+        "kindle_asin": {
+          "field": "kindle_asin",
+          "type": "str"
+        },
+        "similar_books": {
+          "field": "similar_books",
+          "type": "list"
+        },
+        "description": {
+          "field": "description",
+          "type": "str"
+        },
+        "format": {
+          "field": "format",
+          "type": "str"
+        },
+        "link": {
+          "field": "link",
+          "type": "str"
+        },
+        "authors": {
+          "field": "authors",
+          "type": "list"
+        },
+        "publisher": {
+          "field": "publisher",
+          "type": "str"
+        },
+        "num_pages": {
+          "field": "num_pages",
+          "type": "str"
+        },
+        "publication_day": {
+          "field": "publication_day",
+          "type": "str"
+        },
+        "isbn13": {
+          "field": "isbn13",
+          "type": "str"
+        },
+        "publication_month": {
+          "field": "publication_month",
+          "type": "str"
+        },
+        "edition_information": {
+          "field": "edition_information",
+          "type": "str"
+        },
+        "publication_year": {
+          "field": "publication_year",
+          "type": "str"
+        },
+        "url": {
+          "field": "url",
+          "type": "str"
+        },
+        "image_url": {
+          "field": "image_url",
+          "type": "str"
+        },
+        "book_id": {
+          "field": "book_id",
+          "type": "str"
+        },
+        "ratings_count": {
+          "field": "ratings_count",
+          "type": "str"
+        },
+        "work_id": {
+          "field": "work_id",
+          "type": "str"
+        },
+        "title": {
+          "field": "title",
+          "type": "str"
+        },
+        "title_without_series": {
+          "field": "title_without_series",
+          "type": "str"
+        }
+      }
+    },
+    {
+      "file": "goodreads_book_authors.json",
+      "collection": "goodreads_book_authors",
+      "mapping": {
+        "average_rating": {
+          "field": "average_rating",
+          "type": "str"
+        },
+        "author_id": {
+          "field": "author_id",
+          "type": "str"
+        },
+        "text_reviews_count": {
+          "field": "text_reviews_count",
+          "type": "str"
+        },
+        "name": {
+          "field": "name",
+          "type": "str"
+        },
+        "ratings_count": {
+          "field": "ratings_count",
+          "type": "str"
+        }
+      }
+    },
+    {
+      "file": "goodreads_book_series.json",
+      "collection": "goodreads_book_series",
+      "mapping": {
+        "numbered": {
+          "field": "numbered",
+          "type": "str"
+        },
+        "note": {
+          "field": "note",
+          "type": "str"
+        },
+        "description": {
+          "field": "description",
+          "type": "str"
+        },
+        "title": {
+          "field": "title",
+          "type": "str"
+        },
+        "series_works_count": {
+          "field": "series_works_count",
+          "type": "str"
+        },
+        "series_id": {
+          "field": "series_id",
+          "type": "str"
+        },
+        "primary_work_count": {
+          "field": "primary_work_count",
+          "type": "str"
+        }
+      }
+    }
+  ]
+}

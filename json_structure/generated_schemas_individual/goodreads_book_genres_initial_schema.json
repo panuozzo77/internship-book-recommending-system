@@ -1,0 +1,18 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_book_genres_initial.json",
+      "collection": "goodreads_book_genres_initial",
+      "mapping": {
+        "book_id": {
+          "field": "book_id",
+          "type": "str"
+        },
+        "genres": {
+          "field": "genres",
+          "type": "dict"
+        }
+      }
+    }
+  ]
+}

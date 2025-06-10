@@ -1,0 +1,38 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_book_series.json",
+      "collection": "goodreads_book_series",
+      "mapping": {
+        "numbered": {
+          "field": "numbered",
+          "type": "str"
+        },
+        "note": {
+          "field": "note",
+          "type": "str"
+        },
+        "description": {
+          "field": "description",
+          "type": "str"
+        },
+        "title": {
+          "field": "title",
+          "type": "str"
+        },
+        "series_works_count": {
+          "field": "series_works_count",
+          "type": "str"
+        },
+        "series_id": {
+          "field": "series_id",
+          "type": "str"
+        },
+        "primary_work_count": {
+          "field": "primary_work_count",
+          "type": "str"
+        }
+      }
+    }
+  ]
+}
