@@ -13,16 +13,18 @@
         "title_without_series": { "field": "title_without_series", "type": "str" },
         "description": { "field": "description", "type": "str" },
         "publisher": { "field": "publisher", "type": "str" },
-        "num_pages": { "field": "page_count", "type": "int" },
-        "publication_year": {"field": "year", "type": "int"},
-        "publication_month": {"field": "month", "type": "int"},
-        "publication_day": {"field": "day", "type": "int"},
+        "num_pages": { "field": "page_count", "type": "str" },
+
+
+        "publication_day": {"field": "day", "type": "str"},
+        "publication_month": {"field": "month", "type": "str"},
+        "publication_year": {"field": "year", "type": "str"},
 
         "popular_shelves": { "field": "popular_shelves", "type": "list" },
 
-        "average_rating": { "field": "average_rating", "type": "float" },
-        "ratings_count": { "field": "ratings_count", "type": "int" },
-        "text_reviews_count": { "field": "text_reviews_count", "type": "int" }
+        "average_rating": { "field": "average_rating", "type": "str" },
+        "ratings_count": { "field": "ratings_count", "type": "str" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "str" }
       }
     },
     {
@@ -30,30 +32,26 @@
       "collection": "original_books",
       "mapping": {
         "original_title": { "field": "original_title", "type": "str" },
-        "original_publication_year" : { "field": "original_publication_year", "type": "int" },
-        "original_publication_month" : { "field": "original_publication_month", "type": "int" },
-        "original_publication_day" : { "field": "original_publication_day", "type": "int" },
-        "books_count": { "field": "books_count", "type": "int" },
+        "original_publication_year" : { "field": "original_publication_year", "type": "str" },
+        "original_publication_month" : { "field": "original_publication_month", "type": "str" },
+        "original_publication_day" : { "field": "original_publication_day", "type": "str" },
+        "books_count": { "field": "books_count", "type": "str" },
 
-        "reviews_count": { "field": "reviews_count", "type": "int" },
-        "ratings_count": { "field": "ratings_count", "type": "int" },
-        "text_reviews_count": { "field": "text_reviews_count", "type": "int" },
-        "rating_dist": {"field": "rating_dist", "type": "dict" },
-        "ratings_sum": { "field": "ratings_sum", "type": "int" }
+        "reviews_count": { "field": "reviews_count", "type": "str" },
+        "ratings_count": { "field": "ratings_count", "type": "str" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "str" },
+        "rating_dist": {"field": "rating_dist", "type": "str" },
+        "ratings_sum": { "field": "ratings_sum", "type": "str" }
       }
     },
     {
       "file": "goodreads_book_authors.json",
       "collection": "book_authors",
       "mapping": {
-        "author_id": {
-          "field": "author_id",
-          "type": "str"
-        },
-        "name": {
-          "field": "name",
-          "type": "str"
-        }
+        "author_id": {"field": "author_id", "type": "str"},
+        "name": {"field": "name", "type": "str"},
+        "ratings_count": {"field": "ratings_count", "type": "str"},
+        "text_reviews_count": {"field": "text_reviews_count", "type": "str"}
       }
     },
     {
@@ -62,9 +60,9 @@
         "mapping": {
             "series_id": {"field": "series_id", "type": "str"},
             "title": {"field": "name", "type": "str"},
-            "description": {"field": "description", "type": "int"},
-            "primary_work_count": {"field": "primary_work_count", "type": "int"},
-            "series_works_count": {"field": "series_works_count", "type": "int"}
+            "description": {"field": "description", "type": "str"},
+            "primary_work_count": {"field": "primary_work_count", "type": "str"},
+            "series_works_count": {"field": "series_works_count", "type": "str"}
         }
     },
     {
@@ -72,7 +70,7 @@
         "collection": "book_genres",
         "mapping": {
             "book_id": {"field": "book_id", "type": "str"},
-            "genres": {"field": "genres", "type": "str"}
+            "genres": {"field": "genres", "type": "dict"}
         }
     },
     {
@@ -84,10 +82,10 @@
             "review_id": {"field": "review_id", "type": "str"},
             "rating": {"field": "rating", "type": "int"},
             "review_text": {"field": "review_text", "type": "str"},
-            "date_added": {"field": "date_added", "type": "datetime"},
-            "date_updated": {"field": "date_updated", "type": "datetime"},
-            "read_at": {"field": "read_at", "type": "datetime"},
-            "started_at": {"field": "started_at", "type": "datetime"},
+            "date_added": {"field": "date_added", "type": "str"},
+            "date_updated": {"field": "date_updated", "type": "str"},
+            "read_at": {"field": "read_at", "type": "str"},
+            "started_at": {"field": "started_at", "type": "str"},
             "n_votes": {"field": "n_votes", "type": "int"},
             "n_comments": {"field": "n_comments", "type": "int"}
         }
