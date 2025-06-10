@@ -1,0 +1,96 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_books.json",
+      "collection": "goodreads_books_transformed",
+      "mapping": {
+        "book_id": { "field": "book_id", "type": "str" },
+        "work_id": { "field": "work_id", "type": "str" },
+        "best_book_id": { "field": "best_book_id", "type": "str" },
+        "series": { "field": "series", "type": "list" },
+
+        "title": { "field": "book_title", "type": "str" },
+        "title_without_series": { "field": "title_without_series", "type": "str" },
+        "description": { "field": "description", "type": "str" },
+        "publisher": { "field": "publisher", "type": "str" },
+        "num_pages": { "field": "page_count", "type": "int" },
+        "publication_year": {"field": "year", "type": "int"},
+        "publication_month": {"field": "month", "type": "int"},
+        "publication_day": {"field": "day", "type": "int"},
+
+        "popular_shelves": { "field": "popular_shelves", "type": "list" },
+
+        "average_rating": { "field": "average_rating", "type": "float" },
+        "ratings_count": { "field": "ratings_count", "type": "int" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "int" }
+      }
+    },
+    {
+      "file": "goodreads_book_works.json",
+      "collection": "original_books",
+      "mapping": {
+        "original_title": { "field": "original_title", "type": "str" },
+        "original_publication_year" : { "field": "original_publication_year", "type": "int" },
+        "original_publication_month" : { "field": "original_publication_month", "type": "int" },
+        "original_publication_day" : { "field": "original_publication_day", "type": "int" },
+        "books_count": { "field": "books_count", "type": "int" },
+
+        "reviews_count": { "field": "reviews_count", "type": "int" },
+        "ratings_count": { "field": "ratings_count", "type": "int" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "int" },
+        "rating_dist": {"field": "rating_dist", "type": "dict" },
+        "ratings_sum": { "field": "ratings_sum", "type": "int" }
+      }
+    },
+    {
+      "file": "goodreads_book_authors.json",
+      "collection": "book_authors",
+      "mapping": {
+        "author_id": {
+          "field": "author_id",
+          "type": "str"
+        },
+        "name": {
+          "field": "name",
+          "type": "str"
+        }
+      }
+    },
+    {
+      "file": "goodreads_book_series.json",
+        "collection": "book_series",
+        "mapping": {
+            "series_id": {"field": "series_id", "type": "str"},
+            "title": {"field": "name", "type": "str"},
+            "description": {"field": "description", "type": "int"},
+            "primary_work_count": {"field": "primary_work_count", "type": "int"},
+            "series_works_count": {"field": "series_works_count", "type": "int"}
+        }
+    },
+    {
+      "file": "goodreads_book_genres_initial.json",
+        "collection": "book_genres",
+        "mapping": {
+            "book_id": {"field": "book_id", "type": "str"},
+            "genres": {"field": "genres", "type": "str"}
+        }
+    },
+    {
+      "file": "goodreads_reviews_dedup.json",
+        "collection": "user_reviews",
+        "mapping": {
+            "user_id": {"field": "user_id", "type": "str"},
+            "book_id": {"field": "book_id", "type": "str"},
+            "review_id": {"field": "review_id", "type": "str"},
+            "rating": {"field": "rating", "type": "int"},
+            "review_text": {"field": "review_text", "type": "str"},
+            "date_added": {"field": "date_added", "type": "datetime"},
+            "date_updated": {"field": "date_updated", "type": "datetime"},
+            "read_at": {"field": "read_at", "type": "datetime"},
+            "started_at": {"field": "started_at", "type": "datetime"},
+            "n_votes": {"field": "n_votes", "type": "int"},
+            "n_comments": {"field": "n_comments", "type": "int"}
+        }
+    }
+  ]
+}
