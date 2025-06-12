@@ -1,5 +1,5 @@
-# run.py
 # !/usr/bin/env python
+# run.py
 import os
 import sys
 from utils.logger import LoggerManager

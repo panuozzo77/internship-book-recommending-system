@@ -7,10 +7,11 @@ from etl.MongoDBConnection import MongoDBConnection
 from core.path_registry import PathRegistry
 from utils.logger import LoggerManager
 
-logger = LoggerManager().get_logger()
+logger_manager = LoggerManager()
 
 
 def convert_type(value, to_type, field_name="<unknown_field>"): # Added field_name for better logging
+    logger = logger_manager.get_logger()
     if value is None: # If the source value is None (e.g., key missing in JSON or explicit null)
         if to_type == "null": # If the target type is explicitly 'null'
             return None
@@ -76,6 +77,7 @@ def convert_type(value, to_type, field_name="<unknown_field>"): # Added field_na
         return None
 
 def load_csv(file_path, mapping):
+    logger = logger_manager.get_logger()
     data = []
     with open(file_path, encoding='utf-8') as f:
         reader = csv.DictReader(f)
@@ -97,6 +99,7 @@ def load_csv(file_path, mapping):
     return data
 
 def load_json(file_path, mapping):
+    logger = logger_manager.get_logger()
     with open(file_path, encoding='utf-8') as f:
         # Determine if it's a list of objects or a single object per line (NDJSON)
         # This simple check tries to load the whole thing first.
@@ -122,6 +125,7 @@ def load_json(file_path, mapping):
 
     # Ensure original_data_source is a list to iterate over
     if not isinstance(original_data_source, list):
+        logger = logger_manager.get_logger()
         if isinstance(original_data_source, dict):
             original_data_source = [original_data_source] # Handle case where JSON is a single object
             logger.info(f"'{file_path}' contained a single JSON object; processing as a list of one.")
@@ -147,6 +151,7 @@ def load_json(file_path, mapping):
     return data
 
 def run_etl(etl_config_path, config_file_path=None):
+    logger = logger_manager.get_logger()
     registry = PathRegistry()
     if config_file_path:
         registry.set_path('config_file', config_file_path)
@@ -168,7 +173,7 @@ def run_etl(etl_config_path, config_file_path=None):
             collection_name = collection_config['collection']
             mapping = collection_config['mapping']
 
-            logger.debug(f"Processing file: {file_path} for collection: '{collection_name}'")
+            logger.debug(f"Processing file: {file_name} for collection: '{collection_name}'")
 
             ext = os.path.splitext(file_path)[1].lower()
             data = []
@@ -208,6 +213,7 @@ def exec_all_etl(path_list, config_file_path=None):
     :param path_list: List of ETL configuration file paths.
     :param config_file_path: Optional path to the main configuration file.
     """
+    logger = logger_manager.get_logger()
     for etl_config_path in path_list:
         logger.info(f"Running ETL for config: {etl_config_path}")
         run_etl(etl_config_path, config_file_path)
