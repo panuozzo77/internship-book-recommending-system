@@ -1,7 +1,7 @@
 {
     "project_name": "GoodreadsRecommender",
     "version": "0.1.0",
-    "author": "Your Name/Group",
+    "author": "Cristian Porzio",
     "logging": {
         "name": "ProjectLogger",
         "level": "DEBUG",
@@ -10,7 +10,7 @@
     "database": {
         "type": "mongodb",
         "uri": "mongodb://localhost:27017/",
-        "db_name": "goodreads_recommender"
+        "db_name": "gr_recommender"
     },
     "data_paths": {
         "raw_datasets_dir": "downloaded_datasets/partial/",

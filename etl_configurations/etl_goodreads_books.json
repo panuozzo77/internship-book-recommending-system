@@ -2,7 +2,7 @@
   "collections": [
     {
       "file": "goodreads_books.json",
-      "collection": "goodreads_books_transformed",
+      "collection": "books",
       "mapping": {
         "book_id": { "field": "book_id", "type": "str" },
         "work_id": { "field": "work_id", "type": "str" },
@@ -46,7 +46,7 @@
     },
     {
       "file": "goodreads_book_authors.json",
-      "collection": "book_authors",
+      "collection": "author",
       "mapping": {
         "author_id": {"field": "author_id", "type": "str"},
         "name": {"field": "name", "type": "str"},
@@ -56,7 +56,7 @@
     },
     {
       "file": "goodreads_book_series.json",
-        "collection": "book_series",
+        "collection": "book_serie",
         "mapping": {
             "series_id": {"field": "series_id", "type": "str"},
             "title": {"field": "name", "type": "str"},
@@ -75,7 +75,7 @@
     },
     {
       "file": "goodreads_reviews_dedup.json",
-        "collection": "user_reviews",
+        "collection": "reviews",
         "mapping": {
             "user_id": {"field": "user_id", "type": "str"},
             "book_id": {"field": "book_id", "type": "str"},
