@@ -13,7 +13,7 @@
         "db_name": "gr_recommender"
     },
     "data_paths": {
-        "raw_datasets_dir": "downloaded_datasets/partial/",
+        "raw_datasets_dir": "/home/cristian/Documents/dataset",
         "etl_configs_dir": "etl_configurations/"
     },
     "etl_list": [

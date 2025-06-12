@@ -39,7 +39,7 @@ class ArgumentDispatcher:
             action_taken = True
 
         if self.args.specific_etl:
-            self._dispatch_load_specific_etl(self.args.specific_etl)
+            #self._dispatch_load_specific_etl(self.args.specific_etl)
             action_taken = True
 
         # Add other actions here
@@ -69,21 +69,8 @@ class ArgumentDispatcher:
 
         # retrieve the ETL lis files absolute path
         etl_list_paths = [os.path.join(etl_configs_base_dir, etl_file) for etl_file in etl_list]
-        exec_all_etl(etl_list_paths)
+        exec_all_etl(etl_list_paths, self.app_config, PathRegistry())
 
-    def _dispatch_load_specific_etl(self, etl_config_name_or_path: str) -> None:
-        """Handles the --specific_etl argument."""
-        logger = logger_manager.get_logger()
-        logger.info(f"Dispatching: Load specific ETL action for '{etl_config_name_or_path}'.")
-        try:
-            from ETL.simple_etl_processor import run_simple_etl
-            import json
-        except ImportError as e:
-            logger.critical(f"Could not import Simple ETL processor for dispatch. Error: {e}")
-            return
-
-        etl_configs_base_dir = self.registry.get_path('etl_configs_dir', '.')  # Default to CWD if not found
-        self._run_single_etl_file(etl_config_name_or_path, etl_configs_base_dir, run_simple_etl, json)
 
     def _run_single_etl_file(self, etl_name_or_path: str, base_dir_for_relative: str, etl_runner_func,
                              json_module) -> None:
