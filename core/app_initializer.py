@@ -115,6 +115,8 @@ def initialize_app(registry: PathRegistry) -> None:
     logger.debug(f"All CLI arguments parsed: {all_cli_args}")
 
     # --- 7. Dispatch Actions ---
+    logger.info("Dispatching actions based on parsed CLI arguments...")
+    logger.info(f"args: {all_cli_args} | app_config: {current_app_config} | registry: {registry.all_paths()}")
     dispatcher = ArgumentDispatcher(all_cli_args, current_app_config, registry)
     dispatcher.dispatch()
 

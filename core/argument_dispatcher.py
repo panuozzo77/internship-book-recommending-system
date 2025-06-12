@@ -10,7 +10,7 @@ from typing import Dict, Any
 # Import your ETL runner function (adjust path if different)
 # from ETL.simple_etl_processor import run_simple_etl
 
-logger = LoggerManager().get_logger()
+logger_manager = LoggerManager()
 
 
 class ArgumentDispatcher:
@@ -30,9 +30,11 @@ class ArgumentDispatcher:
         """
         Dispatches actions based on the parsed command-line arguments.
         """
+        logger = logger_manager.get_logger()
         action_taken = False
 
         if self.args.load_etl:
+            logger.info("Dispatching: Load all configured ETLs action from CLI.")
             self._dispatch_load_all_configured_etls()
             action_taken = True
 
@@ -49,6 +51,7 @@ class ArgumentDispatcher:
             logger.info("No specific CLI action to dispatch (or action not yet implemented in dispatcher).")
 
     def _dispatch_load_all_configured_etls(self) -> None:
+        logger = logger_manager.get_logger()
         """Handles the --load_etl flag for all configured ETLs."""
         logger.info("Dispatching: Loading all configured ETLs action from config file.")
 
@@ -70,6 +73,7 @@ class ArgumentDispatcher:
 
     def _dispatch_load_specific_etl(self, etl_config_name_or_path: str) -> None:
         """Handles the --specific_etl argument."""
+        logger = logger_manager.get_logger()
         logger.info(f"Dispatching: Load specific ETL action for '{etl_config_name_or_path}'.")
         try:
             from ETL.simple_etl_processor import run_simple_etl
@@ -84,6 +88,7 @@ class ArgumentDispatcher:
     def _run_single_etl_file(self, etl_name_or_path: str, base_dir_for_relative: str, etl_runner_func,
                              json_module) -> None:
         """Helper to run a single ETL file, resolving its path."""
+        logger = logger_manager.get_logger()
         etl_mapping_path: str
         if os.path.isabs(etl_name_or_path):
             etl_mapping_path = etl_name_or_path
