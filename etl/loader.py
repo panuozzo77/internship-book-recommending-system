@@ -12,33 +12,42 @@ from utils.logger import LoggerManager
 logger_manager = LoggerManager()
 
 
+
 def convert_type(value, to_type, field_name="<unknown_field>"):
     logger = logger_manager.get_logger()
-    # ... (convert_type function remains the same) ...
-    if value is None: # If the source value is None (e.g., key missing in JSON or explicit null)
-        if to_type == "null": # If the target type is explicitly 'null'
-            return None
-        return None # Return None for other types if source is None
+
+    # --- Controllo iniziale per stringhe vuote ---
+    if isinstance(value, str) and not value.strip():  # stringa vuota o solo spazi
+        if to_type in ["int", "float"]:
+            return None  # Evita la conversione fallita
+        # Se è una stringa vuota ma non numerica, può essere valida, quindi si continua
+
+    if value is None:
+        return None
 
     try:
         if to_type == "int":
-            # Handle cases where value might be float string like "1.0"
             if isinstance(value, str) and '.' in value:
-                 return int(float(value))
+                return int(float(value))  # es. "3.0" → 3
             return int(value)
+
         elif to_type == "float":
-            return float(value)
+            if isinstance(value, str) and value.strip() in ['.', ',']:
+                return None  # stringa ambigua come "." o ","
+            return float(str(value).replace(',', '.'))  # es. "3,14" → 3.14
+
         elif to_type == "str":
             return str(value)
+
         elif to_type == "bool":
-            if isinstance(value, bool): # If already a boolean (from JSON)
+            if isinstance(value, bool):
                 return value
-            # For string inputs (from CSV or even JSON if bools are strings)
             return str(value).lower() in ("true", "1", "t", "yes", "y")
+
         elif to_type == "list":
-            if isinstance(value, list): # Already a list (primarily from JSON)
+            if isinstance(value, list):
                 return value
-            elif isinstance(value, str): # String representation (primarily from CSV)
+            elif isinstance(value, str):
                 try:
                     parsed_value = json.loads(value)
                     if isinstance(parsed_value, list):
@@ -52,10 +61,11 @@ def convert_type(value, to_type, field_name="<unknown_field>"):
             else:
                 logger.warning(f"Field '{field_name}': Value '{value}' (type: {type(value)}) cannot be converted to list. Returning None.")
                 return None
+
         elif to_type == "dict":
-            if isinstance(value, dict): # Already a dict (primarily from JSON)
+            if isinstance(value, dict):
                 return value
-            elif isinstance(value, str): # String representation (primarily from CSV)
+            elif isinstance(value, str):
                 try:
                     parsed_value = json.loads(value)
                     if isinstance(parsed_value, dict):
@@ -69,15 +79,18 @@ def convert_type(value, to_type, field_name="<unknown_field>"):
             else:
                 logger.warning(f"Field '{field_name}': Value '{value}' (type: {type(value)}) cannot be converted to dict. Returning None.")
                 return None
-        elif to_type == "null": # If type is 'null', ensure None is returned
-             if value is None: # Only map explicit None to None
-                 return None
-             else:
-                 logger.warning(f"Field '{field_name}': Value '{value}' is not None, but target type is 'null'. Returning None.")
-                 return None
+
+        elif to_type == "null":
+            if value is None:
+                return None
+            else:
+                logger.warning(f"Field '{field_name}': Value '{value}' is not None, but target type is 'null'. Returning None.")
+                return None
+
         else:
             logger.warning(f"Field '{field_name}': Unsupported target type '{to_type}' for value '{value}'. Returning original value.")
-            return value # Fallback for unrecognized types
+            return value  # tipo non riconosciuto → fallback
+
     except (ValueError, TypeError) as e:
         logger.warning(f"Field '{field_name}': Error converting value '{value}' to type '{to_type}': {e}. Returning None.")
         return None
