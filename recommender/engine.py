@@ -45,11 +45,22 @@ class ContentBasedRecommender:
             # --- AGGREGATION PIPELINE DI MONGODB ---
             # Questa pipeline unisce le collezioni direttamente nel database, in modo molto efficiente.
             aggregation_pipeline = [
-                # Fase 1: Inizia dalla collezione dei libri
+             # Fase 1: Filtra libri con descrizione non vuota
                 {
-                    '$match': { 'description': {'$ne': ''} } # Opzionale: filtra libri senza descrizione
+                    '$match': { 'description': { '$ne': '' } }
                 },
-                # Fase 2: Unisci con 'book_genres'
+
+                # Fase 2: Ordina per numero di valutazioni (popolarità)
+                {
+                    '$sort': { 'ratings_count': -1 }
+                },
+
+                # Fase 3: Limita il numero di libri (opzionale: top 100k)
+                {
+                    '$limit': 100000
+                },
+
+                # Fase 4: Unisci con la collezione 'book_genres'
                 {
                     '$lookup': {
                         'from': 'book_genres',
@@ -58,15 +69,24 @@ class ContentBasedRecommender:
                         'as': 'genre_info'
                     }
                 },
-                # Fase 3: $unwind per de-normalizzare l'array 'genre_info' (solitamente contiene 1 elemento)
+
+                # Fase 5: De-normalizza l'array 'genre_info'
                 {
-                    '$unwind': { 'path': '$genre_info', 'preserveNullAndEmptyArrays': True }
+                    '$unwind': {
+                        'path': '$genre_info',
+                        'preserveNullAndEmptyArrays': True
+                    }
                 },
-                # Fase 4: $unwind per de-normalizzare l'array degli autori
+
+                # Fase 6: De-normalizza l'array 'author_id'
                 {
-                    '$unwind': { 'path': '$author_id', 'preserveNullAndEmptyArrays': True }
+                    '$unwind': {
+                        'path': '$author_id',
+                        'preserveNullAndEmptyArrays': True
+                    }
                 },
-                # Fase 5: Unisci con la collezione 'authors'
+
+                # Fase 7: Unisci con la collezione 'authors'
                 {
                     '$lookup': {
                         'from': 'authors',
@@ -75,11 +95,16 @@ class ContentBasedRecommender:
                         'as': 'author_details'
                     }
                 },
-                # Fase 6: $unwind per de-normalizzare i dettagli dell'autore
+
+                # Fase 8: De-normalizza 'author_details'
                 {
-                    '$unwind': { 'path': '$author_details', 'preserveNullAndEmptyArrays': True }
+                    '$unwind': {
+                        'path': '$author_details',
+                        'preserveNullAndEmptyArrays': True
+                    }
                 },
-                # Fase 7: Raggruppa per libro per ricomporre gli autori in una lista
+
+                # Fase 9: Raggruppa per libro (ricompone gli autori in lista)
                 {
                     '$group': {
                         '_id': '$book_id',
@@ -87,13 +112,14 @@ class ContentBasedRecommender:
                         'description': { '$first': '$description' },
                         'popular_shelves': { '$first': '$popular_shelves' },
                         'genres': { '$first': '$genre_info.genres' },
-                        'authors': { '$push': '$author_details.name' } # Crea una lista di nomi di autori
+                        'authors': { '$push': '$author_details.name' }
                     }
                 },
-                # Fase 8: Proietta solo i campi che ci servono
+
+                # Fase 10: Proietta solo i campi necessari
                 {
                     '$project': {
-                        '_id': 0, # Escludi l'ID di default del gruppo
+                        '_id': 0,
                         'book_id': '$_id',
                         'book_title': 1,
                         'description': 1,
@@ -101,9 +127,7 @@ class ContentBasedRecommender:
                         'genres': 1,
                         'authors': 1
                     }
-                },
-                # Opzionale: Limita il numero di libri per test più veloci
-                # { '$limit': 20000 }
+                }
             ]
 
             self.logger.info("Executing MongoDB aggregation pipeline to join collections...")

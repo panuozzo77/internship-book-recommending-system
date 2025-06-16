@@ -4,6 +4,7 @@ import os
 
 from etl.loader import run_etl, exec_all_etl
 from recommender.engine import ContentBasedRecommender
+from recommender.engine2 import ContentBasedAnnoyRecommender
 from utils.logger import LoggerManager  # Your LoggerManager
 from core.path_registry import PathRegistry  # Your PathRegistry
 from typing import Dict, Any
@@ -86,7 +87,7 @@ class ArgumentDispatcher:
 
         try:
             # L'inizializzazione dell'engine è pesante, quindi viene fatta qui
-            recommender_engine = ContentBasedRecommender()
+            recommender_engine = ContentBasedAnnoyRecommender()
 
             # Ottieni le raccomandazioni
             recommendations = recommender_engine.get_recommendations(input_book_titles=input_books, top_n=top_n)
