@@ -3,12 +3,10 @@ import argparse
 import os
 
 from etl.loader import run_etl, exec_all_etl
+from recommender.engine import ContentBasedRecommender
 from utils.logger import LoggerManager  # Your LoggerManager
 from core.path_registry import PathRegistry  # Your PathRegistry
 from typing import Dict, Any
-
-# Import your ETL runner function (adjust path if different)
-# from ETL.simple_etl_processor import run_simple_etl
 
 logger_manager = LoggerManager()
 
@@ -42,6 +40,11 @@ class ArgumentDispatcher:
             #self._dispatch_load_specific_etl(self.args.specific_etl)
             action_taken = True
 
+        if self.args.recommend:
+            logger.info("Dispatching: Get recommendations action from CLI.")
+            self._dispatch_get_recommendations()
+            action_taken = True
+
         # Add other actions here
         # if self.args.shrink_dataset:
         #     self._dispatch_shrink_dataset(self.args.shrink_dataset)
@@ -72,6 +75,34 @@ class ArgumentDispatcher:
         exec_all_etl(etl_list_paths, self.app_config, PathRegistry())
 
 
+    def _dispatch_get_recommendations(self) -> None:
+        """Handles the --recommend flag."""
+        logger = logger_manager.get_logger()
+        
+        input_books = self.args.recommend
+        top_n = self.args.top_n
+
+        logger.info(f"Attempting to get {top_n} recommendations for: {input_books}")
+
+        try:
+            # L'inizializzazione dell'engine è pesante, quindi viene fatta qui
+            recommender_engine = ContentBasedRecommender()
+
+            # Ottieni le raccomandazioni
+            recommendations = recommender_engine.get_recommendations(input_book_titles=input_books, top_n=top_n)
+
+            if recommendations:
+                print("\n--- Top Recommendations ---")
+                for i, title in enumerate(recommendations):
+                    print(f"{i+1}. {title}")
+                print("---------------------------\n")
+            else:
+                logger.warning("Could not generate any recommendations.")
+
+        except Exception as e:
+            logger.critical(f"An error occurred during the recommendation process: {e}", exc_info=True)
+
+            
     def _run_single_etl_file(self, etl_name_or_path: str, base_dir_for_relative: str, etl_runner_func,
                              json_module) -> None:
         """Helper to run a single ETL file, resolving its path."""

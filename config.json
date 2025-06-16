@@ -17,6 +17,6 @@
         "etl_configs_dir": "etl_configurations/"
     },
     "etl_list": [
-        "books.json"
+        "etl_goodreads_books.json"
     ]
 }
