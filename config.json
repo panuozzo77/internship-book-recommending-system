@@ -14,7 +14,8 @@
     },
     "data_paths": {
         "raw_datasets_dir": "/home/cristian/Documents/dataset",
-        "etl_configs_dir": "etl_configurations/"
+        "etl_configs_dir": "etl_configurations/",
+        "processed_datasets_dir": "recommendation"
     },
     "etl_list": [
         "etl_goodreads_books.json"

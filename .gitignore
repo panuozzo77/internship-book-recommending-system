@@ -1,4 +1,5 @@
 # .gitignore for Python/MongoDB/Data Processing Project
+recommendation/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
