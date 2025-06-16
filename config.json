@@ -1,0 +1,22 @@
+{
+    "project_name": "GoodreadsRecommender",
+    "version": "0.1.0",
+    "author": "Cristian Porzio",
+    "logging": {
+        "name": "ProjectLogger",
+        "level": "DEBUG",
+        "format": "%(asctime)s - %(levelname)s - [%(module)s.%(funcName)s:%(lineno)d] - %(message)s"
+    },
+    "database": {
+        "type": "mongodb",
+        "uri": "mongodb://localhost:27017/",
+        "db_name": "gr_recommender"
+    },
+    "data_paths": {
+        "raw_datasets_dir": "/home/cristian/Documents/dataset",
+        "etl_configs_dir": "etl_configurations/"
+    },
+    "etl_list": [
+        "books.json"
+    ]
+}

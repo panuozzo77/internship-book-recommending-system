@@ -1,0 +1,74 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_book_works.json",
+      "collection": "goodreads_book_works",
+      "mapping": {
+        "books_count": {
+          "field": "books_count",
+          "type": "str"
+        },
+        "reviews_count": {
+          "field": "reviews_count",
+          "type": "str"
+        },
+        "original_publication_month": {
+          "field": "original_publication_month",
+          "type": "str"
+        },
+        "default_description_language_code": {
+          "field": "default_description_language_code",
+          "type": "str"
+        },
+        "text_reviews_count": {
+          "field": "text_reviews_count",
+          "type": "str"
+        },
+        "best_book_id": {
+          "field": "best_book_id",
+          "type": "str"
+        },
+        "original_publication_year": {
+          "field": "original_publication_year",
+          "type": "str"
+        },
+        "original_title": {
+          "field": "original_title",
+          "type": "str"
+        },
+        "rating_dist": {
+          "field": "rating_dist",
+          "type": "str"
+        },
+        "default_chaptering_book_id": {
+          "field": "default_chaptering_book_id",
+          "type": "str"
+        },
+        "original_publication_day": {
+          "field": "original_publication_day",
+          "type": "str"
+        },
+        "original_language_id": {
+          "field": "original_language_id",
+          "type": "str"
+        },
+        "ratings_count": {
+          "field": "ratings_count",
+          "type": "str"
+        },
+        "media_type": {
+          "field": "media_type",
+          "type": "str"
+        },
+        "ratings_sum": {
+          "field": "ratings_sum",
+          "type": "str"
+        },
+        "work_id": {
+          "field": "work_id",
+          "type": "str"
+        }
+      }
+    }
+  ]
+}

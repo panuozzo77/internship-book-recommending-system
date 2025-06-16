@@ -1,0 +1,14 @@
+{
+  "collections": [
+    {
+      "file": "test.json",
+      "collection": "book",
+      "mapping": {
+        "Titolo": { "field": "title", "type": "str" },
+        "AnnoPubblicazione": { "field": "year", "type": "int" },
+        "Pagine": { "field": "pages", "type": "int" },
+        "Autore": { "field": "author", "type": "str" }
+      }
+    }
+  ]
+}

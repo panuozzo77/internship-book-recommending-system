@@ -1,0 +1,207 @@
+{
+  "global_settings": {
+    "sample_n_rows": null
+  },
+  "sources": [
+    {
+      "alias": "raw_books",
+      "path": "goodreads_books.json",
+      "format": "json_lines",
+      "columns_to_rename": {
+        "title_without_series": "main_book_title",
+        "url": "goodreads_book_url"
+      }
+    },
+    {
+      "alias": "raw_authors",
+      "path": "goodreads_book_authors.json",
+      "format": "json_lines"
+    },
+    {
+      "alias": "raw_series",
+      "path": "goodreads_book_series.json",
+      "format": "json_lines"
+    },
+    {
+      "alias": "raw_works",
+      "path": "goodreads_book_works.json",
+      "format": "json_lines"
+    },
+    {
+      "alias": "raw_book_genres",
+      "path": "goodreads_book_genres_initial.json",
+      "format": "json_lines"
+    },
+    {
+      "alias": "raw_reviews",
+      "path": "goodreads_reviews_dedup.json",
+      "format": "json_lines"
+    }
+  ],
+  "joins": [
+    {
+      "result_alias": "books_with_works",
+      "left_df_alias": "raw_books",
+      "right_df_alias": "raw_works",
+      "left_on": "work_id",
+      "right_on": "work_id",
+      "how": "left",
+      "suffixes": ["_book_edition", "_work_details"]
+    },
+    {
+      "result_alias": "books_works_genres",
+      "left_df_alias": "books_with_works",
+      "right_df_alias": "raw_book_genres",
+      "left_on": "book_id",
+      "right_on": "book_id",
+      "how": "left",
+      "suffixes": ["", "_genre_link"]
+    }
+  ],
+  "targets": [
+    {
+      "collection_name": "books",
+      "source_dataframe_alias": "books_works_genres",
+      "write_mode": "upsert",
+      "upsert_key_fields": ["book_id"],
+      "batch_size": 500,
+      "document_structure": [
+
+        {"source_column": "book_id", "target_field": "book_id", "type": "string", "is_primary_key": true},
+        {"source_column": "work_id", "target_field": "work_id", "type": "string"},
+        {"source_column": "isbn_book_edition", "target_field": "isbn", "type": "string", "default_value": null},
+        {"source_column": "isbn13_book_edition", "target_field": "isbn13", "type": "string", "default_value": null},
+        {"source_column": "asin_book_edition", "target_field": "asin", "type": "string", "default_value": null},
+
+        {"source_column": "main_book_title", "target_field": "title", "type": "string"},
+        {"source_column": "original_title_work_details", "target_field": "original_title", "type": "string"},
+        {"source_column": "description_book_edition", "target_field": "description", "type": "string"},
+
+        {"source_column": "publisher_book_edition", "target_field": "publisher", "type": "string"},
+        {
+          "target_field": "publication_date", "type": "date", "transform": "combine_date_parts",
+          "source_columns": ["publication_year_book_edition", "publication_month_book_edition", "publication_day_book_edition"]
+        },
+        {"source_column": "original_publication_year_work_details", "target_field": "original_publication_year", "type": "integer"},
+        {"source_column": "edition_information_book_edition", "target_field": "edition_info", "type": "string"},
+
+        {"source_column": "num_pages_book_edition", "target_field": "page_count", "type": "integer", "default_value": 0},
+        {"source_column": "language_code_book_edition", "target_field": "language_code", "type": "string"},
+        {"source_column": "media_type_work_details", "target_field": "media_type", "type": "string"},
+
+        {"source_column": "average_rating_book_edition", "target_field": "average_rating", "type": "float"},
+        {"source_column": "ratings_count_book_edition", "target_field": "ratings_count", "type": "integer"},
+        {"source_column": "text_reviews_count_book_edition", "target_field": "text_reviews_count_edition", "type": "integer"},
+        {"source_column": "text_reviews_count_work_details", "target_field": "text_reviews_count_work", "type": "integer"},
+        {"source_column": "rating_dist_work_details", "target_field": "work_rating_distribution", "type": "string"},
+
+        {"source_column": "goodreads_book_url", "target_field": "goodreads_url", "type": "string"},
+        {"source_column": "image_url_book_edition", "target_field": "image_url", "type": "string"},
+
+        {
+          "source_column": "authors_book_edition", "target_field": "authors", "type": "list_of_objects",
+          "object_mapping": [
+            {"source_key": "author_id", "target_key": "author_id", "type": "string"},
+            {"source_key": "role", "target_key": "role", "type": "string", "default_value": ""}
+          ]
+        },
+        {
+          "source_column": "series_book_edition", "target_field": "series_ids", "type": "list_of_strings"
+
+        },
+        {
+          "source_column": "genres",
+          "target_field": "genres_initial",
+          "type": "passthrough"
+
+
+        },
+        {
+          "source_column": "popular_shelves_book_edition", "target_field": "popular_shelves", "type": "list_of_objects",
+          "object_mapping": [
+            {"source_key": "count", "target_key": "count", "type": "integer"},
+            {"source_key": "name", "target_key": "name", "type": "string"}
+          ]
+        },
+        {"source_column": "similar_books_book_edition", "target_field": "similar_book_ids_goodreads", "type": "list_of_strings"},
+
+        {"target_field": "last_etl_update_at", "type": "date", "value": "NOW()"}
+      ],
+      "indexes": [
+        {"field": "book_id", "unique": true},
+        {"field": "work_id"},
+        {"field": "title", "type": "text"},
+        {"field": "authors.author_id"},
+        {"field": "series_ids"},
+        {"field": "original_title"},
+        {"field": "publication_date"},
+        {"field": "average_rating"}
+      ]
+    },
+    {
+      "collection_name": "authors",
+      "source_dataframe_alias": "raw_authors",
+      "write_mode": "upsert",
+      "upsert_key_fields": ["author_id"],
+      "document_structure": [
+        {"source_column": "author_id", "target_field": "author_id", "type": "string", "is_primary_key": true},
+        {"source_column": "name", "target_field": "name", "type": "string"},
+        {"source_column": "average_rating", "target_field": "average_rating_goodreads", "type": "float"},
+        {"source_column": "text_reviews_count", "target_field": "text_reviews_count_goodreads", "type": "integer"},
+        {"source_column": "ratings_count", "target_field": "ratings_count_goodreads", "type": "integer"},
+        {"target_field": "last_etl_update_at", "type": "date", "value": "NOW()"}
+      ],
+      "indexes": [
+        {"field": "author_id", "unique": true},
+        {"field": "name", "type": "text"}
+      ]
+    },
+    {
+      "collection_name": "series_info",
+      "source_dataframe_alias": "raw_series",
+      "write_mode": "upsert",
+      "upsert_key_fields": ["series_id"],
+      "document_structure": [
+        {"source_column": "series_id", "target_field": "series_id", "type": "string", "is_primary_key": true},
+        {"source_column": "title", "target_field": "title", "type": "string"},
+        {"source_column": "description", "target_field": "description", "type": "string"},
+        {"source_column": "numbered", "target_field": "is_numbered", "type": "boolean"},
+        {"source_column": "note", "target_field": "note", "type": "string"},
+        {"source_column": "series_works_count", "target_field": "series_works_count", "type": "integer"},
+        {"source_column": "primary_work_count", "target_field": "primary_work_count", "type": "integer"},
+        {"target_field": "last_etl_update_at", "type": "date", "value": "NOW()"}
+      ],
+      "indexes": [
+        {"field": "series_id", "unique": true},
+        {"field": "title", "type": "text"}
+      ]
+    },
+    {
+      "collection_name": "interactions",
+      "source_dataframe_alias": "raw_reviews",
+      "write_mode": "upsert",
+
+      "upsert_key_fields": ["user_id", "book_id"],
+      "document_structure": [
+        {"source_column": "user_id", "target_field": "user_id", "type": "string"},
+        {"source_column": "book_id", "target_field": "book_id", "type": "string"},
+        {"source_column": "rating", "target_field": "rating", "type": "integer"},
+        {"source_column": "review_id", "target_field": "review_id", "type": "string"},
+        {"source_column": "review_text", "target_field": "review_text", "type": "string"},
+        {"source_column": "date_added", "target_field": "date_added", "type": "date"},
+        {"source_column": "date_updated", "target_field": "date_updated", "type": "date"},
+        {"source_column": "read_at", "target_field": "read_at", "type": "date", "default_value": null},
+        {"source_column": "started_at", "target_field": "started_at", "type": "date", "default_value": null},
+        {"source_column": "n_votes", "target_field": "votes_on_review", "type": "integer"},
+        {"source_column": "n_comments", "target_field": "comments_on_review", "type": "integer"},
+        {"target_field": "last_etl_update_at", "type": "date", "value": "NOW()"}
+      ],
+      "indexes": [
+        {"field": "user_id"},
+        {"field": "book_id"},
+        {"field": ["user_id", "book_id"], "unique": true, "name": "user_book_interaction_unique"},
+        {"field": "review_id", "unique": true}
+      ]
+    }
+  ]
+}

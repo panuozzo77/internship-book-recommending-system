@@ -1,0 +1,126 @@
+{
+  "collections": [
+    {
+      "file": "goodreads_books.json",
+      "collection": "goodreads_books",
+      "mapping": {
+        "isbn": {
+          "field": "isbn",
+          "type": "str"
+        },
+        "text_reviews_count": {
+          "field": "text_reviews_count",
+          "type": "str"
+        },
+        "series": {
+          "field": "series",
+          "type": "list"
+        },
+        "country_code": {
+          "field": "country_code",
+          "type": "str"
+        },
+        "language_code": {
+          "field": "language_code",
+          "type": "str"
+        },
+        "popular_shelves": {
+          "field": "popular_shelves",
+          "type": "list"
+        },
+        "asin": {
+          "field": "asin",
+          "type": "str"
+        },
+        "is_ebook": {
+          "field": "is_ebook",
+          "type": "str"
+        },
+        "average_rating": {
+          "field": "average_rating",
+          "type": "str"
+        },
+        "kindle_asin": {
+          "field": "kindle_asin",
+          "type": "str"
+        },
+        "similar_books": {
+          "field": "similar_books",
+          "type": "list"
+        },
+        "description": {
+          "field": "description",
+          "type": "str"
+        },
+        "format": {
+          "field": "format",
+          "type": "str"
+        },
+        "link": {
+          "field": "link",
+          "type": "str"
+        },
+        "authors": {
+          "field": "authors",
+          "type": "list"
+        },
+        "publisher": {
+          "field": "publisher",
+          "type": "str"
+        },
+        "num_pages": {
+          "field": "num_pages",
+          "type": "str"
+        },
+        "publication_day": {
+          "field": "publication_day",
+          "type": "str"
+        },
+        "isbn13": {
+          "field": "isbn13",
+          "type": "str"
+        },
+        "publication_month": {
+          "field": "publication_month",
+          "type": "str"
+        },
+        "edition_information": {
+          "field": "edition_information",
+          "type": "str"
+        },
+        "publication_year": {
+          "field": "publication_year",
+          "type": "str"
+        },
+        "url": {
+          "field": "url",
+          "type": "str"
+        },
+        "image_url": {
+          "field": "image_url",
+          "type": "str"
+        },
+        "book_id": {
+          "field": "book_id",
+          "type": "str"
+        },
+        "ratings_count": {
+          "field": "ratings_count",
+          "type": "str"
+        },
+        "work_id": {
+          "field": "work_id",
+          "type": "str"
+        },
+        "title": {
+          "field": "title",
+          "type": "str"
+        },
+        "title_without_series": {
+          "field": "title_without_series",
+          "type": "str"
+        }
+      }
+    }
+  ]
+}
