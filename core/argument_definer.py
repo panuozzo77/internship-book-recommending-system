@@ -44,12 +44,17 @@ class ArgumentDefiner:
             metavar="BOOK_TITLE",
             help="Get book recommendations based on a list of input book titles."
         )
-
         parser.add_argument(
             "--top_n",
             type=int,
             default=10,
             help="Number of recommendations to return. Used with --recommend."
+        )
+        parser.add_argument(
+            "--user_profile",
+            type=str,
+            metavar="USER_ID",
+            help="Get recommendations for a specific user ID from the database."
         )
         # Add more arguments here if needed (e.g., for shrink_dataset)
         # parser.add_argument(

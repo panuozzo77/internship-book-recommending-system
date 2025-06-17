@@ -3,8 +3,9 @@ import argparse
 import os
 
 from etl.loader import run_etl, exec_all_etl
-from recommender.engine import ContentBasedRecommender
-from recommender.engine2 import ContentBasedAnnoyRecommender
+#from recommender.engine import ContentBasedRecommender
+from recommender.engine import ContentBasedAnnoyRecommender
+from recommender.user_profiler import UserProfiler
 from utils.logger import LoggerManager  # Your LoggerManager
 from core.path_registry import PathRegistry  # Your PathRegistry
 from typing import Dict, Any
@@ -44,6 +45,11 @@ class ArgumentDispatcher:
         if self.args.recommend:
             logger.info("Dispatching: Get recommendations action from CLI.")
             self._dispatch_get_recommendations()
+            action_taken = True
+        
+        if self.args.user_profile:
+            logger.info("Dispatching: Get recommendations for user profile from CLI.")
+            self._dispatch_recommend_for_user_id()
             action_taken = True
 
         # Add other actions here
@@ -103,7 +109,81 @@ class ArgumentDispatcher:
         except Exception as e:
             logger.critical(f"An error occurred during the recommendation process: {e}", exc_info=True)
 
+    def _dispatch_recommend_from_profile(self):
+        profile_file_path = self.args.profile_file
+        top_n = self.args.top_n
+        
+        logger = logger_manager.get_logger()
+        logger.info("Avvio del processo di raccomandazione basato su profilo utente...")
+        
+        # 1. Inizializza il motore (carica/costruisce l'indice)
+        try:
+            recommender = ContentBasedAnnoyRecommender()
+        except Exception as e:
+            logger.critical(f"Impossibile inizializzare il motore di raccomandazione: {e}")
+            return
+
+        # 2. Inizializza il profiler
+        profiler = UserProfiler(recommender)
+        
+        # 3. Crea il profilo utente dal file
+        profile_data = profiler.create_weighted_profile_from_file(profile_file_path)
+        
+        if profile_data is None:
+            logger.error("Creazione del profilo fallita. Interruzione del processo.")
+            return
             
+        user_profile_vector, read_book_indices = profile_data
+        
+        # 4. Ottieni le raccomandazioni usando il profilo
+        # (Dovrai aggiungere un metodo al recommender che accetta un profilo)
+        
+        # Aggiungiamo un nuovo metodo a `ContentBasedAnnoyRecommender`
+        recommendations = recommender.get_recommendations_by_profile(
+            user_profile_vector,
+            read_book_indices,
+            top_n=top_n
+        )
+        
+        if recommendations:
+            print("\n--- Top Recommendations Based on Your Profile ---")
+            for i, title in enumerate(recommendations):
+                print(f"{i+1}. {title}")
+            print("--------------------------------------------------\n")
+        else:
+            logger.warning("Impossibile generare raccomandazioni per il profilo fornito.")
+
+
+    def _dispatch_recommend_for_user_id(self):
+        user_id = self.args.user_profile
+        top_n = self.args.top_n
+        
+        logger = logger_manager.get_logger()
+        logger.info(f"Avvio processo di raccomandazione per l'utente: {user_id}")
+        
+        try:
+            recommender = ContentBasedAnnoyRecommender()
+            profiler = UserProfiler(recommender)
+            
+            profile_data = profiler.create_weighted_profile_from_db(user_id)
+            
+            if profile_data:
+                user_profile_vector, read_book_indices = profile_data
+                '''
+                recommendations = recommender.get_recommendations_by_profile(
+                    user_profile_vector,
+                    read_book_indices,
+                    top_n=top_n
+                )
+                '''
+                print(f'{user_profile_vector}\n{read_book_indices}')
+                # ... (stampa i risultati come prima)
+            else:
+                logger.error(f"Creazione del profilo fallita per l'utente {user_id}.")
+
+        except Exception as e:
+            logger.critical(f"Errore critico durante la raccomandazione per l'utente {user_id}: {e}", exc_info=True)
+
     def _run_single_etl_file(self, etl_name_or_path: str, base_dir_for_relative: str, etl_runner_func,
                              json_module) -> None:
         """Helper to run a single ETL file, resolving its path."""

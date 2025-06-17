@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+
+{% block title %}Aggiungi Libro{% endblock %}
+
+{% block content %}
+    <h1>Cerca un Libro da Aggiungere</h1>
+    <p class="lead">Cerca per titolo o parole chiave nella descrizione.</p>
+
+    <form method="post" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="query" class="form-control" placeholder="Es: Dune, Harry Potter, ..." required>
+            <button type="submit" class="btn btn-primary">Cerca</button>
+        </div>
+    </form>
+
+    {% if search_results %}
+        <h2>Risultati della Ricerca</h2>
+        <div class="list-group">
+            {% for result in search_results %}
+                <div class="list-group-item mb-3">
+                    <h5>{{ result.book_title }}</h5>
+                    <p class="mb-1 text-muted small">{{ result.description[:250] }}...</p>
+                    
+                    <hr>
+
+                    <form action="{{ url_for('save_book') }}" method="post">
+                        <input type="hidden" name="book_id" value="{{ result.book_id }}">
+                        <input type="hidden" name="book_title" value="{{ result.book_title }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Valutazione (da 1 a 5):</label>
+                             <div class="star-rating">
+                                {% for i in range(5, 0, -1) %}
+                                    <input type="radio" id="new-star-{{ result._id }}-{{ i }}" name="rating" value="{{ i }}" required>
+                                    <label for="new-star-{{ result._id }}-{{ i }}">★</label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="review-{{ result._id }}" class="form-label">Recensione (opzionale):</label>
+                            <textarea class="form-control" id="review-{{ result._id }}" name="review_text" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Aggiungi alla mia lista</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+{% endblock %}

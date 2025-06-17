@@ -1,234 +1,183 @@
-'''
-    Si connette a MongoDB per caricare i dati dei libri.
-
-    Pre-processa i dati testuali (titolo, descrizione, generi, etc.) per creare un "profilo" vettoriale per ogni libro.
-
-    Calcola la similarità tra tutti i libri.
-
-    Fornisce una funzione per ottenere le raccomandazioni.
-'''
-
-# recommender/engine.py
-# recommender/engine.py
+# recommender/engine2.py
+import os
+from typing import List
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+# NUOVO IMPORT
+from annoy import AnnoyIndex
+
 from etl.MongoDBConnection import MongoDBConnection
 from utils.logger import LoggerManager
+from core.path_registry import PathRegistry # Importa per salvare l'indice
 
-class ContentBasedRecommender:
+class ContentBasedAnnoyRecommender:
     def __init__(self, collection_name: str = 'books'):
-        """
-        Inizializza il motore.
-        Args:
-            collection_name: Il nome della collezione principale dei libri (es. 'books' o 'books_augmented').
-        """
         self.logger = LoggerManager().get_logger()
         self.mongo_conn = MongoDBConnection()
         self.collection_name = collection_name
         
-        self.df_books = None
-        self.cosine_sim_matrix = None
-        self.book_indices = None
+        # --- NUOVE PROPRIETÀ ---
+        self.index = None
+        self.vectorizer = None
+        self.book_indices_map = None # Mapping da titolo a indice intero
+        self.book_titles_list = None # Mapping da indice intero a titolo
         
-        self._load_and_prepare_data()
+        self.registry = PathRegistry()
+        self.processed_data_dir = self.registry.get_path('processed_datasets_dir')
+        if not self.processed_data_dir:
+            raise ValueError("Path 'processed_datasets_dir' non configurato in PathRegistry.")
+        
+        self.vector_size = 500 # Dimensione dei vettori. Ridotta per efficienza.
+        self.annoy_index_path = os.path.join(self.processed_data_dir, f'books_index_{self.vector_size}d.ann')
+        
+        self._load_or_build_index()
 
-    def _load_and_prepare_data(self):
+    def _load_or_build_index(self):
         """
-        Carica i dati da MongoDB usando una Aggregation Pipeline per unire le collezioni,
-        li prepara e pre-calcola la matrice di similarità.
+        Carica l'indice Annoy se esiste, altrimenti lo costruisce da zero.
         """
-        self.logger.info(f"Loading and preparing data from '{self.collection_name}' for the recommender engine...")
-        try:
-            db = self.mongo_conn.get_database()
-            
-            # --- AGGREGATION PIPELINE DI MONGODB ---
-            # Questa pipeline unisce le collezioni direttamente nel database, in modo molto efficiente.
-            aggregation_pipeline = [
-             # Fase 1: Filtra libri con descrizione non vuota
-                {
-                    '$match': { 'description': { '$ne': '' } }
-                },
+        if os.path.exists(self.annoy_index_path):
+            self.logger.info(f"Found existing index. Loading from {self.annoy_index_path}")
+            self.index = AnnoyIndex(self.vector_size, 'angular') # 'angular' è la distanza coseno
+            self.index.load(self.annoy_index_path)
 
-                # Fase 2: Ordina per numero di valutazioni (popolarità)
-                {
-                    '$sort': { 'ratings_count': -1 }
-                },
+            # Carica anche i metadati necessari (vectorizer e mapping dei libri)
+            # In una implementazionie reale, salveresti questi con pickle o joblib
+            # Per semplicità, li ricarichiamo sempre per ora.
+            self._load_metadata()
+            self.logger.info("Index and metadata loaded successfully.")
+        else:
+            self.logger.info("No index found. Building a new one...")
+            self._build_index()
 
-                # Fase 3: Limita il numero di libri (opzionale: top 100k)
-                {
-                    '$limit': 100000
-                },
+    def _load_metadata(self):
+        """Carica i dati dei libri e prepara i mapping, senza costruire l'indice."""
+        # Questa è una versione semplificata di _load_and_prepare_data
+        # per evitare di ricalcolare tutto ogni volta.
+        self.logger.info("Loading book metadata for mapping...")
+        db = self.mongo_conn.get_database()
+        
+        # Carichiamo solo gli ID e i titoli per il mapping
+        cursor = db[self.collection_name].find({}, {'_id': 0, 'book_id': 1, 'book_title': 1})
+        df_meta = pd.DataFrame(list(cursor))
+        
+        # Semplice mapping basato sull'ordine del DataFrame (DEVE essere consistente)
+        df_meta = df_meta.sort_values(by='book_id').reset_index(drop=True)
+        self.book_titles_list = df_meta['book_title'].tolist()
+        self.book_indices_map = pd.Series(df_meta.index, index=df_meta['book_title']).drop_duplicates()
+        self.logger.info(f"Metadata for {len(self.book_titles_list)} books loaded.")
 
-                # Fase 4: Unisci con la collezione 'book_genres'
-                {
-                    '$lookup': {
-                        'from': 'book_genres',
-                        'localField': 'book_id',
-                        'foreignField': 'book_id',
-                        'as': 'genre_info'
-                    }
-                },
 
-                # Fase 5: De-normalizza l'array 'genre_info'
-                {
-                    '$unwind': {
-                        'path': '$genre_info',
-                        'preserveNullAndEmptyArrays': True
-                    }
-                },
+    def _build_index(self):
+        """
+        Esegue la pipeline di preparazione dati e costruisce l'indice Annoy.
+        """
+        # Questa funzione ora contiene la logica di preparazione dati
+        # e la costruzione dell'indice.
+        
+        # --- FASE 1: Preparazione dati (come prima, ma senza Pandas) ---
+        self.logger.info("Loading and preparing data to build index...")
+        db = self.mongo_conn.get_database()
+        # Qui potresti usare la stessa aggregation pipeline di prima per unire i dati
+        # Per semplicità qui mostro il caricamento e la preparazione
+        
+        # Carica tutti i dati necessari per creare il 'content'
+        # NOTA: Questa parte è ancora memory-intensive. Potrebbe essere ottimizzata
+        # processando i documenti in batch.
+        # ... (stessa aggregation pipeline di prima per ottenere il DataFrame) ...
+        # ... (stesso codice per creare la colonna 'content') ...
+        # Per ora assumiamo di avere il DataFrame df_books come prima
+        
+        # Esempio semplificato di caricamento
+        # (Usa la tua pipeline di aggregazione completa qui)
+        cursor = db[self.collection_name].find({}, {'book_id': 1, 'book_title': 1, 'description': 1})
+        df_books = pd.DataFrame(list(cursor)).sort_values(by='book_id').reset_index(drop=True)
+        df_books['content'] = df_books['book_title'].fillna('') + ' ' + df_books['description'].fillna('')
+        
+        # --- FASE 2: Vettorizzazione ---
+        self.logger.info(f"Vectorizing content into {self.vector_size}-dimensional space...")
+        self.vectorizer = TfidfVectorizer(max_features=self.vector_size, stop_words='english')
+        tfidf_matrix = self.vectorizer.fit_transform(df_books['content'])
+        
+        # --- FASE 3: Costruzione Indice Annoy ---
+        self.logger.info("Building Annoy index...")
+        self.index = AnnoyIndex(self.vector_size, 'angular')
+        
+        for i in range(tfidf_matrix.shape[0]):
+            vector = tfidf_matrix[i].toarray()[0]
+            self.index.add_item(i, vector)
+            if (i + 1) % 100000 == 0:
+                self.logger.info(f"Added {i+1}/{tfidf_matrix.shape[0]} items to index...")
 
-                # Fase 6: De-normalizza l'array 'author_id'
-                {
-                    '$unwind': {
-                        'path': '$author_id',
-                        'preserveNullAndEmptyArrays': True
-                    }
-                },
+        # Costruisce l'indice (il numero di alberi è un trade-off tra precisione e velocità/dimensione)
+        self.index.build(50) # 50 alberi
+        self.logger.info("Index built. Saving to disk...")
+        self.index.save(self.annoy_index_path)
+        self.logger.info(f"Index saved to {self.annoy_index_path}")
 
-                # Fase 7: Unisci con la collezione 'authors'
-                {
-                    '$lookup': {
-                        'from': 'authors',
-                        'localField': 'author_id.author_id',
-                        'foreignField': 'author_id',
-                        'as': 'author_details'
-                    }
-                },
-
-                # Fase 8: De-normalizza 'author_details'
-                {
-                    '$unwind': {
-                        'path': '$author_details',
-                        'preserveNullAndEmptyArrays': True
-                    }
-                },
-
-                # Fase 9: Raggruppa per libro (ricompone gli autori in lista)
-                {
-                    '$group': {
-                        '_id': '$book_id',
-                        'book_title': { '$first': '$book_title' },
-                        'description': { '$first': '$description' },
-                        'popular_shelves': { '$first': '$popular_shelves' },
-                        'genres': { '$first': '$genre_info.genres' },
-                        'authors': { '$push': '$author_details.name' }
-                    }
-                },
-
-                # Fase 10: Proietta solo i campi necessari
-                {
-                    '$project': {
-                        '_id': 0,
-                        'book_id': '$_id',
-                        'book_title': 1,
-                        'description': 1,
-                        'popular_shelves': 1,
-                        'genres': 1,
-                        'authors': 1
-                    }
-                }
-            ]
-
-            self.logger.info("Executing MongoDB aggregation pipeline to join collections...")
-            cursor = db[self.collection_name].aggregate(aggregation_pipeline)
-            
-            self.df_books = pd.DataFrame(list(cursor))
-
-            if self.df_books.empty:
-                self.logger.error(f"No books found in '{self.collection_name}' after aggregation. Cannot build recommender.")
-                return
-
-            self.logger.info(f"Loaded {len(self.df_books)} processed books from the database.")
-
-            # --- FEATURE ENGINEERING ---
-            
-            # 1. Pulisci i dati e gestisci valori mancanti
-            self.df_books['description'] = self.df_books['description'].fillna('')
-            self.df_books['book_title'] = self.df_books['book_title'].fillna('')
-
-            # 2. Estrai tag da 'popular_shelves' e 'genres'
-            def extract_tags(row):
-                shelves = row['popular_shelves']
-                genres = row['genres']
-                authors = row['authors']
-                
-                tags = set()
-                # Estrai nomi dagli scaffali popolari, ignorando 'to-read' e 'currently-reading'
-                if isinstance(shelves, list):
-                    for shelf in shelves:
-                        if isinstance(shelf, dict) and 'name' in shelf and shelf['name'] not in ['to-read', 'currently-reading']:
-                            tags.add(shelf['name'].replace('-', ' ')) # Sostituisci '-' con spazio
-                
-                # Estrai chiavi (nomi dei generi) dal dizionario genres
-                if isinstance(genres, dict):
-                    for genre_name in genres.keys():
-                        tags.add(genre_name.replace('-', ' '))
-                
-                # Aggiungi i nomi degli autori
-                if isinstance(authors, list):
-                    for author_name in authors:
-                        if author_name:
-                            tags.add(author_name)
-
-                return ' '.join(list(tags))
-
-            self.logger.info("Engineering content features from genres, shelves, and authors...")
-            self.df_books['content_tags'] = self.df_books.apply(extract_tags, axis=1)
-
-            # 3. Combina tutto in un'unica feature "contenuto"
-            # Pesiamo di più il titolo e i tag ripetendoli
-            self.df_books['content'] = (self.df_books['book_title'] + ' ') * 3 + \
-                                       (self.df_books['content_tags'] + ' ') * 2 + \
-                                       self.df_books['description']
-
-            # --- VETTORIZZAZIONE E CALCOLO SIMILARITÀ ---
-            tfidf = TfidfVectorizer(stop_words='english', max_features=10000) # Aumentato max_features
-            tfidf_matrix = tfidf.fit_transform(self.df_books['content'])
-
-            self.logger.info("Calculating cosine similarity matrix...")
-            self.cosine_sim_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
-            self.logger.info("Cosine similarity matrix calculated successfully.")
-
-            # Mappa per trovare l'indice dal titolo del libro
-            self.book_indices = pd.Series(self.df_books.index, index=self.df_books['book_title']).drop_duplicates()
-
-        except Exception as e:
-            self.logger.critical(f"Failed to initialize recommender engine: {e}", exc_info=True)
-            self.df_books = None
-            self.cosine_sim_matrix = None
-            self.book_indices = None
+        # SALVA I MAPPING dopo la costruzione
+        self.book_titles_list = df_books['book_title'].tolist()
+        self.book_indices_map = pd.Series(df_books.index, index=df_books['book_title']).drop_duplicates()
 
     def get_recommendations(self, input_book_titles: list, top_n: int = 10) -> list:
-        """
-        Fornisce raccomandazioni basate su una lista di titoli di libri.
-        (Questo metodo rimane invariato)
-        """
-        if self.cosine_sim_matrix is None or self.df_books is None:
-            self.logger.error("Recommender is not ready. Data loading might have failed.")
+        if self.index is None:
+            self.logger.error("Recommender is not ready.")
             return []
 
         input_indices = []
         for title in input_book_titles:
-            # Gestisce il caso in cui lo stesso titolo possa apparire più volte
-            if title in self.book_indices:
-                idx = self.book_indices[title]
-                if isinstance(idx, pd.Series): # Se ci sono duplicati, prendi il primo
-                    idx = idx.iloc[0]
+            if title in self.book_indices_map:
+                idx = self.book_indices_map[title]
+                if isinstance(idx, pd.Series): idx = idx.iloc[0]
                 input_indices.append(idx)
             else:
-                self.logger.warning(f"Book '{title}' not found in the dataset. Skipping.")
+                self.logger.warning(f"Book '{title}' not found. Skipping.")
 
         if not input_indices:
-            self.logger.error("None of the input books were found in the dataset.")
             return []
-        
-        self.logger.info(f"Found indices for input books: {input_indices}")
 
-        avg_sim_scores = self.cosine_sim_matrix[input_indices].mean(axis=0)
-        sim_scores_with_indices = list(enumerate(avg_sim_scores))
-        sim_scores_with_indices = sorted(sim_scores_with_indices, key=lambda x: x[1], reverse=True)
-        final_book_indices = [i[0] for i in sim_scores_with_indices if i[0] not in input_indices]
-        top_indices = final_book_indices[1:top_n+1] # Partiamo da 1 per escludere il libro stesso (massima similarità)
+        # Ottieni i vettori per i libri di input DALL'INDICE
+        input_vectors = [self.index.get_item_vector(i) for i in input_indices]
         
-        return self.df_books['book_title'].iloc[top_indices].tolist()
+        # Calcola il profilo medio
+        import numpy as np
+        profile_vector = np.mean(input_vectors, axis=0)
+
+        # Cerca i vicini più prossimi al profilo medio
+        # Il primo risultato è il profilo stesso, quindi chiediamo N+len(input) items
+        # include_distances=False restituisce solo gli indici
+        result_indices = self.index.get_nns_by_vector(profile_vector, top_n + len(input_indices))
+        
+        # Filtra i libri che l'utente ha già fornito
+        final_indices = [idx for idx in result_indices if idx not in input_indices]
+        
+        # Prendi i primi N e restituisci i titoli
+        return [self.book_titles_list[i] for i in final_indices[:top_n]]
+    
+    def get_recommendations_by_profile(self, profile_vector: np.ndarray, exclude_indices: set, top_n: int = 10) -> List[str]:
+        """
+        Trova i libri più simili a un dato profilo vettoriale, escludendo alcuni indici.
+        
+        Args:
+            profile_vector: Il vettore numpy che rappresenta il profilo dell'utente.
+            exclude_indices: Un set di indici di libri da escludere dai risultati.
+            top_n: Il numero di raccomandazioni da restituire.
+
+        Returns:
+            Una lista di titoli di libri raccomandati.
+        """
+        if self.index is None:
+            self.logger.error("Recommender non è pronto (indice non caricato).")
+            return []
+            
+        # Cerca i vicini più prossimi usando Annoy
+        # Chiediamo più risultati per avere margine dopo il filtraggio
+        num_candidates = top_n + len(exclude_indices)
+        result_indices = self.index.get_nns_by_vector(profile_vector, num_candidates)
+        
+        # Filtra i libri da escludere
+        final_indices = [idx for idx in result_indices if idx not in exclude_indices]
+        
+        # Prendi i primi N e restituisci i loro titoli
+        return [self.book_titles_list[i] for i in final_indices[:top_n]]
