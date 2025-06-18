@@ -16,16 +16,17 @@ class UserProfiler:
     def __init__(self, recommender: ContentBasedAnnoyRecommender):
         """
         Inizializza il profiler.
-        (Il costruttore rimane invariato)
+        Args:
+            recommender: Un'istanza di ContentBasedAnnoyRecommender per accedere al database e all'indice.
         """
         self.logger = LoggerManager().get_logger()
         if not isinstance(recommender, ContentBasedAnnoyRecommender):
-            raise TypeError("Il profiler richiede un'istanza valida di ContentBasedAnnoyRecommender.")
+            raise TypeError("The profiler requires a valid instance of ContentBasedAnnoyRecommender.")
         
         self.recommender = recommender
         # Accediamo al database tramite l'istanza del recommender
         self.db = self.recommender.mongo_conn.get_database()
-        self.logger.info("UserProfiler inizializzato e collegato al motore di raccomandazione.")
+        self.logger.info("UserProfiler initialized and connected to recommendation engine.")
 
     # --- METODO ESISTENTE PER IL FILE (invariato) ---
     def _parse_user_ratings_file(self, file_path: str) -> List[Dict[str, any]]:
@@ -40,7 +41,7 @@ class UserProfiler:
                     
                     parts = line.split(';')
                     if len(parts) != 3:
-                        self.logger.warning(f"Riga malformata nel file di profilo, ignorata: '{line}'")
+                        self.logger.warning(f"Malformed line in profile file, ignored: '{line}")
                         continue
                     
                     title, rating_str, review_text = parts
@@ -48,7 +49,7 @@ class UserProfiler:
                     try:
                         rating = int(rating_str)
                         if not 1 <= rating <= 5:
-                            raise ValueError("Rating fuori dal range 1-5")
+                            raise ValueError("Rating outside range 1-5")
                         
                         user_ratings.append({
                             'title': title.strip(), 
@@ -56,10 +57,10 @@ class UserProfiler:
                             'review': review_text.strip()
                         })
                     except (ValueError, TypeError) as e:
-                        self.logger.warning(f"Rating non valido per il libro '{title}', ignorato: {e}")
+                        self.logger.warning(f"Rating not valid for the book '{title}', ignored: {e}")
 
         except FileNotFoundError:
-            self.logger.error(f"File di profilo utente non trovato: {file_path}")
+            self.logger.error(f"User profile not found in: {file_path}")
             return []
         
         return user_ratings
@@ -76,7 +77,7 @@ class UserProfiler:
         Returns:
             Una lista di dizionari con i dati delle recensioni.
         """
-        self.logger.info(f"Recupero delle recensioni per l'utente {user_id} dal DB...")
+        self.logger.info(f"Retrieving reviews for user {user_id} from DB...")
         
         # Pipeline di aggregazione per trovare le recensioni e unirle ai titoli dei libri
         pipeline = [
@@ -116,10 +117,10 @@ class UserProfiler:
         try:
             cursor = self.db.reviews.aggregate(pipeline)
             user_ratings = list(cursor)
-            self.logger.info(f"Trovate {len(user_ratings)} recensioni per l'utente {user_id}.")
+            self.logger.info(f"Found {len(user_ratings)} reviews for user {user_id}.")
             return user_ratings
         except Exception as e:
-            self.logger.error(f"Errore durante il recupero delle recensioni dal DB per l'utente {user_id}: {e}", exc_info=True)
+            self.logger.error(f"Error retrieving reviews from DB for user {user_id}: {e}", exc_info=True)
             return []
 
 
@@ -136,16 +137,16 @@ class UserProfiler:
             Una tupla (profilo_vettoriale, indici_libri_letti) o None se fallisce.
         """
         if user_id:
-            self.logger.info(f"Avvio creazione profilo per l'utente del DB: {user_id}")
+            self.logger.info(f"Starting profile creation for DB user: {user_id}")
             user_ratings = self._fetch_ratings_from_reviews_collection(user_id)
-            source_name = f"l'utente {user_id}"
+            source_name = f"user {user_id}"
         else:
-            self.logger.info("Avvio creazione profilo dalla collezione 'my_books'")
+            self.logger.info("Starting profile creation from 'my_books' collection")
             user_ratings = self._fetch_ratings_from_my_books_collection()
-            source_name = "la collezione 'my_books'"
+            source_name = "'my_books' collection"
 
         if not user_ratings:
-            self.logger.warning(f"Nessuna recensione valida trovata per {source_name}. Impossibile creare il profilo.")
+            self.logger.warning(f"No valid reviews found for {source_name}. Unable to create profile.")
             return None
         
         # Chiama il metodo centrale di creazione del profilo
@@ -153,8 +154,7 @@ class UserProfiler:
 
     def _fetch_ratings_from_reviews_collection(self, user_id: str) -> List[Dict[str, any]]:
         """Recupera le valutazioni di un utente dalla collezione 'reviews'."""
-        self.logger.debug(f"Recupero recensioni per l'utente {user_id}...")
-        
+        self.logger.debug(f"Retrieving reviews for user {user_id}...")
         pipeline = [
             {'$match': {'user_id': user_id}},
             {'$lookup': {
@@ -176,13 +176,13 @@ class UserProfiler:
             cursor = self.db.reviews.aggregate(pipeline)
             return list(cursor)
         except Exception as e:
-            self.logger.error(f"Errore durante il recupero da 'reviews' per l'utente {user_id}: {e}", exc_info=True)
+            self.logger.error(f"Error retrieving from 'reviews' for user {user_id}: {e}", exc_info=True)
             return []
 
     def _fetch_ratings_from_my_books_collection(self) -> List[Dict[str, any]]:
         """Recupera le valutazioni dalla collezione 'my_books'."""
-        self.logger.debug("Recupero recensioni dalla collezione 'my_books'...")
-        
+        self.logger.debug("Retrieving reviews from 'my_books' collection...")
+
         # Non serve una pipeline complessa, 'my_books' ha già il titolo.
         # Dobbiamo solo proiettare i campi nel formato standard.
         try:
@@ -197,7 +197,7 @@ class UserProfiler:
             )
             return list(cursor)
         except Exception as e:
-            self.logger.error(f"Errore durante il recupero da 'my_books': {e}", exc_info=True)
+            self.logger.error(f"Error retrieving from 'my_books': {e}", exc_info=True)
             return []
 
     # --- NUOVO METODO PUBBLICO (wrapper per la logica principale) ---
