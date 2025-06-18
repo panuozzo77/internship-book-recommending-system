@@ -32,6 +32,7 @@
       "file": "goodreads_book_works.json",
       "collection": "original_books",
       "mapping": {
+        "work_id": { "field": "work_id", "type": "str" },
         "original_title": { "field": "original_title", "type": "str" },
         "original_publication_year" : { "field": "original_publication_year", "type": "str" },
         "original_publication_month" : { "field": "original_publication_month", "type": "str" },

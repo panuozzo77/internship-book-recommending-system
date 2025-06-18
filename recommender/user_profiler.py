@@ -124,7 +124,7 @@ class UserProfiler:
             return []
 
 
-    def create_weighted_profile(self, user_id: Optional[str] = None) -> Optional[Tuple[np.ndarray, set]]:
+    def create_weighted_profile(self, user_id: Optional[str] = None) -> Optional[Tuple[np.ndarray, set, float]]:
         """
         Crea un profilo utente vettoriale ponderato.
         - Se viene fornito un user_id, interroga la collezione 'reviews'.
@@ -134,7 +134,7 @@ class UserProfiler:
             user_id (opzionale): L'ID dell'utente da profilare. Se None, si usa 'my_books'.
 
         Returns:
-            Una tupla (profilo_vettoriale, indici_libri_letti) o None se fallisce.
+            Una tupla (profilo_vettoriale, indici_libri_letti, media_pagine) o None se fallisce.
         """
         if user_id:
             self.logger.info(f"Starting profile creation for DB user: {user_id}")
@@ -144,12 +144,12 @@ class UserProfiler:
             self.logger.info("Starting profile creation from 'my_books' collection")
             user_ratings = self._fetch_ratings_from_my_books_collection()
             source_name = "'my_books' collection"
-
+        
         if not user_ratings:
             self.logger.warning(f"No valid reviews found for {source_name}. Unable to create profile.")
             return None
         
-        # Chiama il metodo centrale di creazione del profilo
+        # La chiamata a _create_profile_from_ratings ora restituirà 3 valori
         return self._create_profile_from_ratings(user_ratings)
 
     def _fetch_ratings_from_reviews_collection(self, user_id: str) -> List[Dict[str, any]]:
@@ -239,44 +239,61 @@ class UserProfiler:
         return self._create_profile_from_ratings(user_ratings)
 
 
-    # --- NUOVO METODO CENTRALE PER LA CREAZIONE DEL PROFILO ---
-    def _create_profile_from_ratings(self, user_ratings: List[Dict[str, any]]) -> Optional[Tuple[np.ndarray, set]]:
+    def _create_profile_from_ratings(self, user_ratings: List[Dict[str, any]]) -> Optional[Tuple[np.ndarray, set, float]]:
         """
-        Metodo principale e generalizzato che crea un profilo da una lista di valutazioni.
+        Metodo principale che crea un profilo da una lista di valutazioni.
         
         Args:
             user_ratings: Una lista di dizionari, ognuno contenente 'title', 'rating', 'review'.
 
         Returns:
-            Una tupla (profilo_vettoriale, indici_libri_letti) o None se fallisce.
+            Una tupla (profilo_vettoriale, indici_libri_letti, media_pagine_preferita) o None se fallisce.
         """
         profile_accumulator = np.zeros(self.recommender.vector_size, dtype=np.float32)
         total_weight_magnitude = 0.0
         read_book_indices = set()
+        page_counts = []
         
         book_indices_map = self.recommender.book_indices_map
 
         for item in user_ratings:
-            title = item['title']
-            rating = item['rating']
+            title = item.get('title')
+            rating = item.get('rating')
             
-            # Controlla se il rating è valido (potrebbe essere 0 nei dati)
-            if rating == 0: continue
+            if rating is None or rating == 0: continue
+            if not title: continue
 
-            if title and title in book_indices_map:
+            if title in book_indices_map:
                 book_idx_series = book_indices_map[title]
                 book_idx = book_idx_series.iloc[0] if isinstance(book_idx_series, pd.Series) else book_idx_series
                 
                 read_book_indices.add(book_idx)
                 
+                # Calcolo del profilo vettoriale (logica invariata)
                 book_vector = self.recommender.index.get_item_vector(book_idx)
-                
                 weight = (float(rating) - 3.0) / 2.0
-                
                 profile_accumulator += np.array(book_vector, dtype=np.float32) * weight
                 total_weight_magnitude += abs(weight)
+                
+                # NUOVA LOGICA: Raccogli i page_count per i libri piaciuti
+                if rating >= 4: # Consideriamo solo i libri piaciuti per la media pagine
+                    try:
+                        page_count = self.recommender.df_books.iloc[book_idx]['page_count']
+                        if pd.notna(page_count) and page_count > 0:
+                            page_counts.append(page_count)
+                    except (KeyError, IndexError):
+                        pass # Ignora se il libro non ha page_count
+
             else:
                 self.logger.warning(f"Libro '{title}' non trovato nel dataset, ignorato per il profiling.")
+        
+        # Calcola la media delle pagine
+        avg_page_count = np.mean(page_counts) if page_counts else 0.0
+        if avg_page_count > 0:
+            self.logger.info(f"Lunghezza media preferita calcolata: {avg_page_count:.0f} pagine.")
+        else:
+            self.logger.warning("Nessun dato valido per calcolare la lunghezza media preferita.")
+
 
         if not read_book_indices:
             self.logger.error("Nessuno dei libri nel profilo è stato trovato nel nostro dataset.")
@@ -287,7 +304,7 @@ class UserProfiler:
             vectors_for_fallback = [self.recommender.index.get_item_vector(i) for i in read_book_indices]
             final_profile = np.mean(vectors_for_fallback, axis=0, dtype=np.float32)
         else:
-            final_profile = profile_accumulator / total_weight_magnitude
+           final_profile = profile_accumulator / total_weight_magnitude
         
         self.logger.info(f"Profilo creato con successo basato su {len(read_book_indices)} libri trovati.")
         return final_profile, read_book_indices
