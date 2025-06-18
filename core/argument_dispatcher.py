@@ -9,6 +9,7 @@ from recommender.user_profiler import UserProfiler
 from utils.logger import LoggerManager  # Your LoggerManager
 from core.path_registry import PathRegistry  # Your PathRegistry
 from typing import Dict, Any
+from webapp.runner import run_web_ui  # Function to run the web UI
 
 logger_manager = LoggerManager()
 
@@ -50,6 +51,12 @@ class ArgumentDispatcher:
         if self.args.user_profile:
             logger.info("Dispatching: Get recommendations for user profile from CLI.")
             self._dispatch_recommend_for_user_id()
+            action_taken = True
+        
+        if self.args.webui:
+            logger.info("Dispatching: Run Web User Interface action from CLI.")
+            # La configurazione viene passata alla funzione di avvio
+            run_web_ui(self.app_config)
             action_taken = True
 
         # Add other actions here
@@ -184,24 +191,4 @@ class ArgumentDispatcher:
         except Exception as e:
             logger.critical(f"Errore critico durante la raccomandazione per l'utente {user_id}: {e}", exc_info=True)
 
-    def _run_single_etl_file(self, etl_name_or_path: str, base_dir_for_relative: str, etl_runner_func,
-                             json_module) -> None:
-        """Helper to run a single ETL file, resolving its path."""
-        logger = logger_manager.get_logger()
-        etl_mapping_path: str
-        if os.path.isabs(etl_name_or_path):
-            etl_mapping_path = etl_name_or_path
-        else:
-            etl_mapping_path = os.path.join(base_dir_for_relative, etl_name_or_path)
-
-        if os.path.exists(etl_mapping_path):
-            logger.info(f"Executing ETL with mapping config: {etl_mapping_path}")
-            try:
-                # The simple_etl_processor.run_simple_etl already loads the ETL JSON itself.
-                # We pass the path to it.
-                etl_runner_func(etl_mapping_path, self.app_config, self.registry)  # Pass app_config & registry
-                logger.info(f"Finished processing ETL from: {etl_mapping_path}")
-            except Exception as e:  # Catch broad exceptions from the ETL run itself
-                logger.critical(f"ETL pipeline failed for '{etl_mapping_path}'. Error: {e}", exc_info=True)
-        else:
-            logger.error(f"ETL mapping configuration file not found: {etl_mapping_path}")
+    

@@ -71,7 +71,12 @@ def _create_default_config_file(filepath: str) -> bool:
             "etl_configs_dir": "etl_configurations/",
             "log_dir": "logs/" # For log files
         },
-        "etl_list": ["etl_libri.json"] # Example
+        "etl_list": ["etl_libri.json"], # Example ETL mapping file
+        "webapp": {
+            "host": "127.0.0.1",
+            "port": 5001,
+            "debug": true
+        }  
     }
     try:
         os.makedirs(os.path.dirname(filepath), exist_ok=True) # Ensure directory exists

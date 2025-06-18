@@ -56,6 +56,11 @@ class ArgumentDefiner:
             metavar="USER_ID",
             help="Get recommendations for a specific user ID from the database."
         )
+        parser.add_argument(
+            "--webui",
+            action="store_true",
+            help="Run the web user interface for the application."
+        )
         # Add more arguments here if needed (e.g., for shrink_dataset)
         # parser.add_argument(
         #     "--shrink_dataset", ...
