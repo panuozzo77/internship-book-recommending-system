@@ -14,7 +14,7 @@
         "title_without_series": { "field": "title_without_series", "type": "str" },
         "description": { "field": "description", "type": "str" },
         "publisher": { "field": "publisher", "type": "str" },
-        "num_pages": { "field": "page_count", "type": "str" },
+        "num_pages": { "field": "page_count", "type": "int" },
 
 
         "publication_day": {"field": "day", "type": "str"},
@@ -23,15 +23,16 @@
 
         "popular_shelves": { "field": "popular_shelves", "type": "list" },
 
-        "average_rating": { "field": "average_rating", "type": "str" },
-        "ratings_count": { "field": "ratings_count", "type": "str" },
-        "text_reviews_count": { "field": "text_reviews_count", "type": "str" }
+        "average_rating": { "field": "average_rating", "type": "float" },
+        "ratings_count": { "field": "ratings_count", "type": "int" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "int" }
       }
     },
     {
       "file": "goodreads_book_works.json",
       "collection": "original_books",
       "mapping": {
+        "work_id": { "field": "work_id", "type": "str" },
         "original_title": { "field": "original_title", "type": "str" },
         "original_publication_year" : { "field": "original_publication_year", "type": "str" },
         "original_publication_month" : { "field": "original_publication_month", "type": "str" },
@@ -39,8 +40,8 @@
         "books_count": { "field": "books_count", "type": "str" },
 
         "reviews_count": { "field": "reviews_count", "type": "str" },
-        "ratings_count": { "field": "ratings_count", "type": "str" },
-        "text_reviews_count": { "field": "text_reviews_count", "type": "str" },
+        "ratings_count": { "field": "ratings_count", "type": "int" },
+        "text_reviews_count": { "field": "text_reviews_count", "type": "int" },
         "rating_dist": {"field": "rating_dist", "type": "str" },
         "ratings_sum": { "field": "ratings_sum", "type": "str" }
       }
@@ -51,8 +52,8 @@
       "mapping": {
         "author_id": {"field": "author_id", "type": "str"},
         "name": {"field": "name", "type": "str"},
-        "ratings_count": {"field": "ratings_count", "type": "str"},
-        "text_reviews_count": {"field": "text_reviews_count", "type": "str"}
+        "ratings_count": {"field": "ratings_count", "type": "int"},
+        "text_reviews_count": {"field": "text_reviews_count", "type": "int"}
       }
     },
     {

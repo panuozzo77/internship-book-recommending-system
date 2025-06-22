@@ -37,6 +37,30 @@ class ArgumentDefiner:
             metavar="ETL_CONFIG_NAME_OR_PATH",
             help="Run a specific ETL mapping file. Provide filename from 'etl_configurations_dir' or an absolute path."
         )
+        parser.add_argument(
+            "--recommend",
+            nargs='+', # Accetta uno o più valori (i titoli dei libri)
+            type=str,
+            metavar="BOOK_TITLE",
+            help="Get book recommendations based on a list of input book titles."
+        )
+        parser.add_argument(
+            "--top_n",
+            type=int,
+            default=10,
+            help="Number of recommendations to return. Used with --recommend."
+        )
+        parser.add_argument(
+            "--user_profile",
+            type=str,
+            metavar="USER_ID",
+            help="Get recommendations for a specific user ID from the database."
+        )
+        parser.add_argument(
+            "--webui",
+            action="store_true",
+            help="Run the web user interface for the application."
+        )
         # Add more arguments here if needed (e.g., for shrink_dataset)
         # parser.add_argument(
         #     "--shrink_dataset", ...

@@ -14,9 +14,15 @@
     },
     "data_paths": {
         "raw_datasets_dir": "/home/cristian/Documents/dataset",
-        "etl_configs_dir": "etl_configurations/"
+        "etl_configs_dir": "etl_configurations/",
+        "processed_datasets_dir": "recommendation"
     },
     "etl_list": [
-        "books.json"
-    ]
+        "etl_goodreads_books.json"
+    ],
+    "webapp": {
+            "host": "127.0.0.1",
+            "port": 5001,
+            "debug": true
+        }
 }
