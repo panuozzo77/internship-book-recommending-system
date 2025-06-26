@@ -75,7 +75,7 @@ def _create_default_config_file(filepath: str) -> bool:
         "webapp": {
             "host": "127.0.0.1",
             "port": 5001,
-            "debug": true
+            "debug": True
         }  
     }
     try:
