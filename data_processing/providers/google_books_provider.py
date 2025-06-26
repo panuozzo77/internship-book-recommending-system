@@ -7,7 +7,7 @@ import logging # Import logging
 
 # from data_processing.book_data_provider_interface import BookDataProvider, BookMetadata
 from ..book_data_provider_interface import BookDataProvider, BookMetadata # Adattato per struttura project/data_processing/providers
-from utils.logger import LoggerManager # Assumendo utils sia a livello di project
+from core.utils.logger import LoggerManager # Assumendo utils sia a livello di project
 
 class GoogleBooksProvider(BookDataProvider):
     API_URL = "https://www.googleapis.com/books/v1/volumes"

@@ -1,7 +1,7 @@
 # core/app_initializer.py
 import os
 import argparse  # Still needed for the preliminary --config parse
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 from core.PathRegistry import PathRegistry
 from core.app_config_loader import (  # Import new config loading functions
     load_or_create_app_config,

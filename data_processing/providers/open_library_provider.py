@@ -9,12 +9,12 @@ from typing import List, Optional, Dict, Any
 try:
     # Se eseguito come parte di un pacchetto (es. con -m)
     from ..book_data_provider_interface import BookDataProvider, BookMetadata
-    from utils.logger import LoggerManager # Assumendo utils sia a livello di project
+    from core.utils.logger import LoggerManager # Assumendo utils sia a livello di project
 except ImportError:
     # Fallback per esecuzione diretta dello script o se la struttura è diversa
     # Potrebbe essere necessario aggiungere il percorso al sys.path se questo fallisce
     from book_data_provider_interface import BookDataProvider, BookMetadata
-    from utils.logger import LoggerManager
+    from core.utils.logger import LoggerManager
 
 
 class OpenLibraryProvider(BookDataProvider):

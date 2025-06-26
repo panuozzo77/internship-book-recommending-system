@@ -8,7 +8,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from annoy import AnnoyIndex
 
 from etl.MongoDBConnection import MongoDBConnection
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 from core.PathRegistry import PathRegistry # Importa per salvare l'indice
 
 

@@ -15,7 +15,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.PathRegistry import PathRegistry
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 from etl.MongoDBConnection import MongoDBConnection
 
 # Definiamo uno stato per il log

@@ -2,7 +2,7 @@
 # run.py
 import os
 import sys
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 from core.app_initializer import initialize_app
 from core.PathRegistry import PathRegistry
 

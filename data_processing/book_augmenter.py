@@ -10,7 +10,7 @@ from pymongo.errors import PyMongoError
 
 # from data_processing.book_data_provider_interface import BookDataProvider, BookMetadata, AugmentationStatus, ProviderAttemptStatus
 from .book_data_provider_interface import BookDataProvider, BookMetadata, AugmentationStatus, ProviderAttemptStatus # Adattato
-from utils.logger import LoggerManager # Assumendo utils sia a livello di project
+from core.utils.logger import LoggerManager # Assumendo utils sia a livello di project
 
 
 class BookAugmenter:

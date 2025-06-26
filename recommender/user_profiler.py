@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Tuple
 
 from core.PathRegistry import PathRegistry
 from recommender.engine import ContentBasedAnnoyRecommender 
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 
 class UserProfiler:
     """

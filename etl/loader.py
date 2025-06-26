@@ -7,7 +7,7 @@ from typing import Dict, Any, Generator, List # Import necessary types
 
 from etl.MongoDBConnection import MongoDBConnection
 from core.PathRegistry import PathRegistry
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 
 logger_manager = LoggerManager()
 

@@ -12,7 +12,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from webapp.app import app  # Importa l'istanza 'app' di Flask dal tuo file app.py
-from utils.logger import LoggerManager
+from core.utils.logger import LoggerManager
 
 def run_web_ui(app_config: Dict[str, Any]):
     """
