@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.PathRegistry import PathRegistry
 from etl.MongoDBConnection import MongoDBConnection
-from core.utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 
 def export_books_for_augmentation(db, output_file_path: str, limit: int = 500):
     """

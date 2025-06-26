@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
 from core.PathRegistry import PathRegistry
-from core.utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 
 logger = LoggerManager().get_logger()
 

@@ -1,7 +1,7 @@
 # core/app_config_loader.py
 import json
 import os
-from core.utils.logger import LoggerManager # Use your LoggerManager
+from core.utils.LoggerManager import LoggerManager # Use your LoggerManager
 from typing import Optional, Dict, Any
 
 DEFAULT_CONFIG_FILENAME = "config.json"

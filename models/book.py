@@ -3,7 +3,7 @@ from typing import Optional, Dict, List, Any
 from pymongo.database import Database
 from core.PathRegistry import PathRegistry
 from etl.MongoDBConnection import MongoDBConnection
-from core.utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 
 
 class Author:

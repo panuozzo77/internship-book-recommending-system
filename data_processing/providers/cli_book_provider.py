@@ -7,7 +7,7 @@ from typing import List, Optional, Callable, Dict, Union
 
 # from data_processing.book_data_provider_interface import BookDataProvider, BookMetadata
 from ..book_data_provider_interface import BookDataProvider, BookMetadata # Adattato
-from core.utils.logger import LoggerManager # Assumendo utils sia a livello di project
+from core.utils.LoggerManager import LoggerManager # Assumendo utils sia a livello di project
 
 # Aggiorna la firma del Callable per usare logging.Logger
 CliOutputParser = Callable[[str, logging.Logger], Optional[BookMetadata]]

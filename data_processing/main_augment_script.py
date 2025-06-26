@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 
 from etl.MongoDBConnection import MongoDBConnection
-from core.utils.logger import LoggerManager # Questo ora è corretto
+from core.utils.LoggerManager import LoggerManager # Questo ora è corretto
 from core.PathRegistry import PathRegistry
 import subprocess
 

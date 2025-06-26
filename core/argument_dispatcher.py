@@ -3,7 +3,7 @@
 import argparse
 from typing import Dict, Any
 
-from core.utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 from core.PathRegistry import PathRegistry
 
 # Import the entire module to keep the namespace clean
