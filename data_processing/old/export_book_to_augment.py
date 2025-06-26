@@ -3,7 +3,7 @@ import csv
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from etl.MongoDBConnection import MongoDBConnection
 from utils.logger import LoggerManager
 

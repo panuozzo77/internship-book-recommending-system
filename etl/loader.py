@@ -6,7 +6,7 @@ import pymongo
 from typing import Dict, Any, Generator, List # Import necessary types
 
 from etl.MongoDBConnection import MongoDBConnection
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from utils.logger import LoggerManager
 
 logger_manager = LoggerManager()

@@ -14,7 +14,7 @@ from typing import List, Dict, Optional, Literal
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from utils.logger import LoggerManager
 from etl.MongoDBConnection import MongoDBConnection
 

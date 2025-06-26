@@ -8,7 +8,7 @@ from etl.loader import exec_all_etl
 from recommender.engine import ContentBasedAnnoyRecommender
 from recommender.user_profiler import UserProfiler
 from utils.logger import LoggerManager
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from webapp.runner import run_web_ui
 
 logger_manager = LoggerManager()

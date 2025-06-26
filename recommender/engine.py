@@ -9,7 +9,7 @@ from annoy import AnnoyIndex
 
 from etl.MongoDBConnection import MongoDBConnection
 from utils.logger import LoggerManager
-from core.path_registry import PathRegistry # Importa per salvare l'indice
+from core.PathRegistry import PathRegistry # Importa per salvare l'indice
 
 
 class ContentBasedAnnoyRecommender:

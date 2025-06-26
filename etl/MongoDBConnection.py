@@ -5,7 +5,7 @@ from typing import Optional
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from utils.logger import LoggerManager
 
 logger = LoggerManager().get_logger()

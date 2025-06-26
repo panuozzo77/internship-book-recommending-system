@@ -4,7 +4,7 @@ import argparse
 from typing import Dict, Any
 
 from utils.logger import LoggerManager
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 
 # Import the entire module to keep the namespace clean
 from core import dispatcher_actions

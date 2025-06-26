@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 from etl.MongoDBConnection import MongoDBConnection
 from utils.logger import LoggerManager # Questo ora è corretto
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 import subprocess
 
 from data_processing.book_augmenter import BookAugmenter

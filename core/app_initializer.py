@@ -2,7 +2,7 @@
 import os
 import argparse  # Still needed for the preliminary --config parse
 from utils.logger import LoggerManager
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from core.app_config_loader import (  # Import new config loading functions
     load_or_create_app_config,
     get_app_config,
