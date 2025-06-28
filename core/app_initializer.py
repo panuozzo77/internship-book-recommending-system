@@ -1,6 +1,6 @@
 # core/app_initializer.py
 import os
-import argparse  # Still needed for the preliminary --config parse
+import argparse
 from core.utils.LoggerManager import LoggerManager
 from core.PathRegistry import PathRegistry
 from core.app_config_loader import (  # Import new config loading functions
@@ -9,15 +9,16 @@ from core.app_config_loader import (  # Import new config loading functions
     determine_app_config_path,
     DEFAULT_CONFIG_FILENAME  # If needed
 )
+from typing import Dict, Any
 from .argument_definer import ArgumentDefiner
 from .argument_dispatcher import ArgumentDispatcher
 
 # MongoDBConnection will be initialized by the ETL process or other services as needed
 
-logger_manager = LoggerManager()  # Get the singleton instance of LoggerManager
+logger_manager = LoggerManager()
 
 
-def _setup_paths_from_config(registry: PathRegistry, app_cfg: dict, project_root: str) -> None:
+def _setup_paths_from_config(registry: PathRegistry, app_cfg: Dict[str, Any], project_root: str) -> None:
     """Registers paths from app_cfg into PathRegistry and creates directories."""
     if app_cfg and "data_paths" in app_cfg:
         logger = logger_manager.get_logger()
@@ -77,6 +78,12 @@ def initialize_app(registry: PathRegistry) -> None:
         return  # Stop further initialization
 
     current_app_config = get_app_config()  # Get the loaded config
+
+    # This check is crucial. It satisfies the static analyzer that current_app_config is not None
+    # for the rest of the function, fixing the reported Pylance errors.
+    if not current_app_config:
+        logger.critical("Configuration is None after a successful load check. This should not happen.")
+        return
 
     # --- 3. Configure Logger fully based on loaded App Config ---
     log_settings = current_app_config.get("logging", {})

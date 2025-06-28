@@ -1,140 +1,135 @@
 # core/dispatcher_actions.py
-
-import argparse
 import os
 from typing import Dict, Any
+from pathlib import Path
 
 from etl.loader import exec_all_etl
 from recommender.engine import ContentBasedAnnoyRecommender
 from recommender.user_profiler import UserProfiler
+from webapp.runner import run_web_ui
 from core.utils.LoggerManager import LoggerManager
 from core.PathRegistry import PathRegistry
-from webapp.runner import run_web_ui
+from core.utils.dataset_analyzer.schema_generator import process_all_json_in_directory
 
 logger_manager = LoggerManager()
 
 # --- ETL Actions ---
-
 def load_all_configured_etls(app_config: Dict[str, Any], registry: PathRegistry) -> None:
-    """Handles loading all configured ETLs from the application config."""
+    """Load all ETL processes defined in configuration."""
     logger = logger_manager.get_logger()
-    logger.info("Dispatching action: Loading all configured ETLs.")
-
+    logger.info("Loading all configured ETL processes")
+    
     etl_list = app_config.get("etl_list", [])
-    etl_configs_base_dir = registry.get_path('etl_configs_dir')
+    etl_configs_dir = registry.get_path('etl_configs_dir')
 
     if not etl_list:
-        logger.warning("No ETL mapping files listed in 'etl_list' in the application config.")
-        return
-    if not etl_configs_base_dir:
-        logger.error("Path for 'etl_configs_dir' not found in PathRegistry. Cannot locate ETL files.")
+        logger.warning("No ETL configurations found in app_config")
         return
 
-    logger.info(f"Found {len(etl_list)} ETL configurations to process: {etl_list}")
-    etl_list_paths = [os.path.join(etl_configs_base_dir, etl_file) for etl_file in etl_list]
-    exec_all_etl(etl_list_paths, app_config, PathRegistry())
+    etl_paths = [os.path.join(etl_configs_dir, etl_file) for etl_file in etl_list] # type: ignore
+    exec_all_etl(etl_paths, app_config, registry)
 
-# You can add the specific ETL loader function here if you need it
-# def load_specific_etl(etl_name: str, app_config: Dict[str, Any], registry: PathRegistry) -> None:
-#     ...
-
-# --- Recommender Actions ---
-
-def get_recommendations(args: argparse.Namespace) -> None:
-    """Handles the --recommend flag."""
+def load_specific_etl(etl_name: str, app_config: Dict[str, Any], registry: PathRegistry) -> None:
+    """Load a specific ETL configuration."""
     logger = logger_manager.get_logger()
+    logger.info(f"Loading specific ETL: {etl_name}")
     
-    input_books = args.recommend
-    top_n = args.top_n
+    etl_configs_dir = registry.get_path('etl_configs_dir')
+    etl_path = os.path.join(etl_configs_dir, etl_name) # type: ignore
+    
+    if not os.path.exists(etl_path):
+        logger.error(f"ETL config not found: {etl_path}")
+        return
 
-    logger.info(f"Attempting to get {top_n} recommendations for: {input_books}")
+    exec_all_etl([etl_path], app_config, registry)
 
-    try:
-        recommender_engine = ContentBasedAnnoyRecommender()
-        recommendations = recommender_engine.get_recommendations(input_book_titles=input_books, top_n=top_n)
-
-        if recommendations:
-            print("\n--- Top Recommendations ---")
-            for i, (title, score) in enumerate(recommendations):
-                print(f"{i+1}. {title} (Score: {score:.4f})")
-            print("---------------------------\n")
-        else:
-            logger.warning("Could not generate any recommendations.")
-    except Exception as e:
-        logger.critical(f"An error occurred during the recommendation process: {e}", exc_info=True)
-
-
-def recommend_from_profile_file(args: argparse.Namespace) -> None:
-    """Handles the --profile_file flag."""
+# --- Recommendation Actions ---
+def recommend_by_titles(titles: list[str], top_n: int = 10) -> None:
+    """Generate recommendations based on book titles."""
     logger = logger_manager.get_logger()
-    profile_file_path = args.profile_file
-    top_n = args.top_n
-    
-    logger.info("Starting recommendation process based on user profile file...")
+    logger.info(f"Generating recommendations for titles: {titles}")
     
     try:
         recommender = ContentBasedAnnoyRecommender()
-        profiler = UserProfiler(recommender)
-        profile_data = profiler.create_weighted_profile_from_file(profile_file_path)
+        recommendations = recommender.get_recommendations(input_book_titles=titles, top_n=top_n)
         
-        if profile_data is None:
-            logger.error("Profile creation failed. Aborting.")
-            return
-            
-        user_profile_vector, read_book_indices = profile_data
-        recommendations = recommender.get_recommendations_by_profile(
-            user_profile_vector,
-            read_book_indices,
-            top_n=top_n
-        )
-        
-        if recommendations:
-            print("\n--- Top Recommendations Based on Your Profile ---")
-            for i, (title, score) in enumerate(recommendations):
-                print(f"{i+1}. {title} (Score: {score:.4f})")
-            print("--------------------------------------------------\n")
-        else:
-            logger.warning("Could not generate recommendations for the provided profile.")
+        print("\n=== Recommendations ===")
+        for i, (title, score) in enumerate(recommendations):
+            print(f"{i+1}. {title} (score: {score:.2f})")
     except Exception as e:
-        logger.critical(f"A critical error occurred: {e}", exc_info=True)
+        logger.error(f"Recommendation failed: {e}", exc_info=True)
 
-
-def recommend_for_user_id(args: argparse.Namespace) -> None:
-    """Handles the --user_profile flag."""
+def recommend_for_user_id(user_id: str, top_n: int = 10) -> None:
+    """Generate recommendations for a user ID."""
     logger = logger_manager.get_logger()
-    user_id = args.user_profile
-    top_n = args.top_n
-    
-    logger.info(f"Starting recommendation process for user ID: {user_id}")
+    logger.info(f"Generating recommendations for user: {user_id}")
     
     try:
         recommender = ContentBasedAnnoyRecommender()
         profiler = UserProfiler(recommender)
         profile_data = profiler.create_weighted_profile(user_id)
-        
+        #logger.warning(f"Profile data for user {user_id}: {profile_data}")
+
         if profile_data:
             user_profile_vector, read_book_indices = profile_data
             recommendations = recommender.get_recommendations_by_profile(
-                user_profile_vector, read_book_indices, top_n=top_n
+                user_profile_vector,
+                read_book_indices,
+                top_n=top_n
             )
 
-            if recommendations:
-                print(f"\n--- Top {top_n} Recommendations for User {user_id} ---")
-                for i, title in enumerate(recommendations):
-                    print(f"{i+1}. {title}")
-                print("--------------------------------------------------\n")
-            else:
-                logger.warning("Could not generate recommendations for the provided user.")
+            print(f"\n=== Recommendations for User {user_id} ===")
+            for i, title in enumerate(recommendations):
+                print(f"{i+1}. {title}")
         else:
-            logger.error(f"Profile creation failed for user {user_id}.")
-
+            logger.error("Failed to create user profile")
     except Exception as e:
-        logger.critical(f"A critical error occurred while recommending for user {user_id}: {e}", exc_info=True)
+        logger.error(f"User recommendation failed: {e}", exc_info=True)
+
+def recommend_from_profile_file(profile_path: str, top_n: int = 10) -> None:
+    """Generate recommendations from a profile file."""
+    logger = logger_manager.get_logger()
+    logger.info(f"Generating recommendations from profile: {profile_path}")
+    
+    try:
+        recommender = ContentBasedAnnoyRecommender()
+        profiler = UserProfiler(recommender)
+        profile_data = profiler.create_weighted_profile_from_file(profile_path)
+        
+        if profile_data:
+            recommendations = recommender.get_recommendations_by_profile(
+                *profile_data, top_n=top_n
+            )
+            
+            print("\n=== Recommendations from Profile ===")
+            for i, (title, score) in enumerate(recommendations):
+                print(f"{i+1}. {title} (score: {score:.2f})")
+        else:
+            logger.error("Failed to create profile from file")
+    except Exception as e:
+        logger.error(f"Profile recommendation failed: {e}", exc_info=True)
 
 # --- Web UI Action ---
-
 def run_web_ui(app_config: Dict[str, Any]) -> None:
-    """Handles the --webui flag."""
+    """Launch the web interface."""
     logger = logger_manager.get_logger()
-    logger.info("Dispatching action: Run Web User Interface.")
+    logger.info("Starting web UI")
     run_web_ui(app_config)
+
+# --- Data Tools Actions ---
+def infer_schema(input_dir: str, output_path: str = None, output_mode: str = 'both') -> None:
+    """Perform schema inference on JSON files."""
+    logger = logger_manager.get_logger()
+    logger.info(f"Inferring schemas from: {input_dir}")
+    
+    try:
+        individual_dir = output_path if output_mode in ['individual', 'both'] else None
+        aggregate_file = output_path if output_mode in ['aggregate', 'both'] else None
+        
+        process_all_json_in_directory(
+            input_dir_path_str=input_dir,
+            output_dir_path_str=individual_dir,
+            aggregate_output_file_path_str=aggregate_file
+        )
+    except Exception as e:
+        logger.error(f"Schema inference failed: {e}", exc_info=True)
