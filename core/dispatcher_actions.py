@@ -4,9 +4,9 @@ from typing import Dict, Any
 from pathlib import Path
 
 from etl.loader import exec_all_etl
-from recommender.engine import ContentBasedAnnoyRecommender
+from recommender.engine2 import ContentBasedAnnoyRecommender
 from recommender.user_profiler import UserProfiler
-from webapp.runner import run_web_ui
+from webapp.runner import run_web_ui as web_ui
 from core.utils.LoggerManager import LoggerManager
 from core.PathRegistry import PathRegistry
 from core.utils.dataset_analyzer.schema_generator import process_all_json_in_directory
@@ -44,6 +44,7 @@ def load_specific_etl(etl_name: str, app_config: Dict[str, Any], registry: PathR
     exec_all_etl([etl_path], app_config, registry)
 
 # --- Recommendation Actions ---
+''''''
 def recommend_by_titles(titles: list[str], top_n: int = 10) -> None:
     """Generate recommendations based on book titles."""
     logger = logger_manager.get_logger()
@@ -114,7 +115,7 @@ def run_web_ui(app_config: Dict[str, Any]) -> None:
     """Launch the web interface."""
     logger = logger_manager.get_logger()
     logger.info("Starting web UI")
-    run_web_ui(app_config)
+    web_ui(app_config)
 
 # --- Data Tools Actions ---
 def infer_schema(input_dir: str, output_path: str = None, output_mode: str = 'both') -> None:

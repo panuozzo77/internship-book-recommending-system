@@ -5,7 +5,7 @@ import pandas as pd # Aggiunto import per la gestione dei duplicati
 from typing import List, Dict, Optional, Tuple
 
 from core.PathRegistry import PathRegistry
-from recommender.engine import ContentBasedAnnoyRecommender 
+from recommender.engine2 import ContentBasedAnnoyRecommender 
 from core.utils.LoggerManager import LoggerManager
 
 class UserProfiler:
