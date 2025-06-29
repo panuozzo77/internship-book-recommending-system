@@ -46,11 +46,9 @@ class UserInteractionRepository:
         self.collection_name = collection_name
         self.logger = LoggerManager().get_logger()
 
-    def find_positive_interactions_by_user(self, user_id: Any) -> pd.DataFrame:
+    def find_interactions_by_user(self, user_id: Any) -> pd.DataFrame:
         """
-        Trova tutti i libri con cui un utente ha interagito positivamente.
-        Per semplicità, consideriamo positive tutte le interazioni.
-        In un caso reale, potresti filtrare per rating > 3, etc.
+        Trova tutti i libri con cui un utente ha interagito.
         """
         self.logger.info(f"Fetching interactions for user_id '{user_id}'...")
         # Uniamo con la collection 'books' per ottenere direttamente i titoli
@@ -71,7 +69,8 @@ class UserInteractionRepository:
                     'user_id': 1,
                     'book_id': 1,
                     'book_title': '$book_details.book_title',
-                    'page_count': '$book_details.page_count' # Ci servirà per il re-ranking
+                    'page_count': '$book_details.page_count', # Ci servirà per il re-ranking
+                    'rating': '$rating',  # Aggiungiamo il rating se disponibile
                 }
             }
         ]
