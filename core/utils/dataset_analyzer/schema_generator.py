@@ -1,19 +1,21 @@
+# core/utils/dataset_analyzer/schema_generator.py
 import json
 from pathlib import Path
-from json_schema_util import generate_structure_json # Make sure this file exists and is importable
+from typing import Optional
+from .json_schema_util import generate_structure_json
 
 def process_all_json_in_directory(input_dir_path_str: str,
-                                  output_dir_path_str: str = None,
-                                  aggregate_output_file_path_str: str = None):
+                                  output_dir_path_str: Optional[str] = None,
+                                  aggregate_output_file_path_str: Optional[str] = None):
     """
     Processes all JSON files in a given directory to generate their structure schemas.
 
     Args:
         input_dir_path_str (str): Path to the directory containing JSON files.
-        output_dir_path_str (str, optional): Path to a directory where individual
+        output_dir_path_str (Optional[str]): Path to a directory where individual
                                              schema files will be saved. If None,
                                              schemas are not saved individually.
-        aggregate_output_file_path_str (str, optional): Path to a single JSON file
+        aggregate_output_file_path_str (Optional[str]): Path to a single JSON file
                                                         where all generated schemas
                                                         will be aggregated. If None,
                                                         no aggregated file is created.
@@ -24,6 +26,7 @@ def process_all_json_in_directory(input_dir_path_str: str,
         return
 
     all_collections_for_aggregation = []
+    output_dir: Optional[Path] = None
 
     # Prepare output directory for individual files if specified
     if output_dir_path_str:
@@ -57,7 +60,7 @@ def process_all_json_in_directory(input_dir_path_str: str,
             # print(json.dumps(schema, indent=2)) # Optionally print each schema
 
             # Save individual schema file
-            if output_dir_path_str:
+            if output_dir:
                 output_schema_filename = f"{file_path.stem}_schema.json"
                 individual_output_path = output_dir / output_schema_filename
                 try:
@@ -93,7 +96,7 @@ def process_all_json_in_directory(input_dir_path_str: str,
     elif aggregate_output_file_path_str:
         print("\nNo schemas were generated or successfully processed for aggregation.")
 
-
+'''
 if __name__ == "__main__":
     # --- Configuration ---
     # Relative path from where this script is run
@@ -115,6 +118,7 @@ if __name__ == "__main__":
     )
 
     print("\nProcessing complete.")
+'''
 
     # To run with only individual outputs:
     # process_all_json_in_directory(input_directory, output_dir_path_str=individual_schemas_output_dir)

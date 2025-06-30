@@ -1,9 +1,9 @@
 # models/book.py
 from typing import Optional, Dict, List, Any
 from pymongo.database import Database
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 from etl.MongoDBConnection import MongoDBConnection
-from utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 
 
 class Author:

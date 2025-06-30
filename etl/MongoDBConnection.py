@@ -5,8 +5,8 @@ from typing import Optional
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-from core.path_registry import PathRegistry
-from utils.logger import LoggerManager
+from core.PathRegistry import PathRegistry
+from core.utils.LoggerManager import LoggerManager
 
 logger = LoggerManager().get_logger()
 

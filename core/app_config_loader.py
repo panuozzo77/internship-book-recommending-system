@@ -1,7 +1,7 @@
 # core/app_config_loader.py
 import json
 import os
-from utils.logger import LoggerManager # Use your LoggerManager
+from core.utils.LoggerManager import LoggerManager # Use your LoggerManager
 from typing import Optional, Dict, Any
 
 DEFAULT_CONFIG_FILENAME = "config.json"
@@ -75,7 +75,7 @@ def _create_default_config_file(filepath: str) -> bool:
         "webapp": {
             "host": "127.0.0.1",
             "port": 5001,
-            "debug": true
+            "debug": True
         }  
     }
     try:

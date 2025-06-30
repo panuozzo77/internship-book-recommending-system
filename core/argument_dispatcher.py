@@ -3,8 +3,8 @@
 import argparse
 from typing import Dict, Any
 
-from utils.logger import LoggerManager
-from core.path_registry import PathRegistry
+from core.utils.LoggerManager import LoggerManager
+from core.PathRegistry import PathRegistry
 
 # Import the entire module to keep the namespace clean
 from core import dispatcher_actions
@@ -24,42 +24,48 @@ class ArgumentDispatcher:
         self.args = parsed_args
         self.app_config = app_config
         self.registry = registry
+        self.logger = logger_manager.get_logger()
 
     def dispatch(self) -> None:
-        """
-        Dispatches actions based on the parsed command-line arguments.
-        """
-        logger = logger_manager.get_logger()
-        action_taken = False
+        """Routes the command to the appropriate action handler."""
+        try:
+            if not self.args.command:
+                self.logger.info("No command specified. Use --help to see available commands.")
+                return
 
-        if self.args.load_etl:
-            # CHANGED: Call the function from the actions module and pass the required context.
+            handler = getattr(self, f"_handle_{self.args.command}", None)
+            if handler:
+                handler()
+            else:
+                self.logger.error(f"No handler found for command: {self.args.command}")
+        except Exception as e:
+            self.logger.critical(f"Error dispatching command: {e}", exc_info=True)
+
+    def _handle_etl(self) -> None:
+        """Handles ETL subcommand actions."""
+        if self.args.load_all:
             dispatcher_actions.load_all_configured_etls(self.app_config, self.registry)
-            action_taken = True
+        elif self.args.specific:
+            dispatcher_actions.load_specific_etl(self.args.specific, self.app_config, self.registry)
 
-        # if self.args.specific_etl:
-        #     dispatcher_actions.dispatch_load_specific_etl(self.args.specific_etl, self.app_config, self.registry)
-        #     action_taken = True
+    def _handle_recommend(self) -> None:
+        """Handles recommendation subcommand actions."""
+        if self.args.by_title:
+            dispatcher_actions.recommend_by_titles(self.args.by_title, self.args.top_n)
+        elif self.args.by_user_id:
+            dispatcher_actions.recommend_for_user_id(self.args.by_user_id, self.args.top_n)
+        elif self.args.by_profile_file:
+            dispatcher_actions.recommend_from_profile_file(self.args.by_profile_file, self.args.top_n)
 
-        if self.args.recommend:
-            # CHANGED: Call the function and pass the parsed arguments.
-            dispatcher_actions.get_recommendations(self.args)
-            action_taken = True
-        
-        #if self.args.profile_file:
-        #    # CHANGED: Call the function for handling profile files.
-        #    dispatcher_actions.recommend_from_profile_file(self.args)
-        #    action_taken = True
-        
-        if self.args.user_profile:
-            # CHANGED: Call the function for handling user IDs.
-            dispatcher_actions.recommend_for_user_id(self.args)
-            action_taken = True
-        
-        if self.args.webui:
-            # CHANGED: Call the function and pass the application config.
-            dispatcher_actions.run_web_ui(self.app_config)
-            action_taken = True
+    def _handle_tools(self) -> None:
+        """Handles data tools subcommand actions."""
+        if self.args.infer_schema:
+            dispatcher_actions.infer_schema(
+                input_dir=self.args.schema_input_dir,
+                output_path=self.args.schema_output_path,
+                output_mode=self.args.schema_output_mode
+            )
 
-        if not action_taken:
-            logger.info("No specific CLI action was taken. Use --help to see available commands.")
+    def _handle_webui(self) -> None:
+        """Handles web UI subcommand action."""
+        dispatcher_actions.run_web_ui(self.app_config)

@@ -2,9 +2,9 @@
 # run.py
 import os
 import sys
-from utils.logger import LoggerManager
+from core.utils.LoggerManager import LoggerManager
 from core.app_initializer import initialize_app
-from core.path_registry import PathRegistry
+from core.PathRegistry import PathRegistry
 
 
 def main():
