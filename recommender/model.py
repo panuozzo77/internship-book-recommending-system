@@ -29,8 +29,8 @@ class RecommenderModel:
 class ModelBuilder:
     """Costruisce il RecommenderModel partendo da un DataFrame di libri."""
     
-    def __init__(self, vector_size: int = config.VECTOR_SIZE, n_trees: int = config.ANNOY_N_TREES):
-        self.vector_size = vector_size
+    def __init__(self, max_vector_size: int = config.VECTOR_SIZE, n_trees: int = config.ANNOY_N_TREES):
+        self.max_vector_size = max_vector_size
         self.n_trees = n_trees
         self.logger = LoggerManager().get_logger()
 
@@ -47,13 +47,19 @@ class ModelBuilder:
         df_processed = self._prepare_data(df)
         
         # --- Fase 2: Vettorizzazione ---
-        self.logger.info(f"Vectorizing content into {self.vector_size}-dimensional space...")
-        vectorizer = TfidfVectorizer(max_features=self.vector_size, stop_words='english')
+        self.logger.info(f"Vectorizing content into {self.max_vector_size}-dimensional space...")
+        vectorizer = TfidfVectorizer(max_features=self.max_vector_size, stop_words='english')
         tfidf_matrix = vectorizer.fit_transform(df_processed['content'])
 
+        actual_vector_size = tfidf_matrix.shape[1]
+        self.logger.info(f"Actual vector size after TF-IDF processing: {actual_vector_size}")
+        if actual_vector_size == 0:
+            self.logger.error("Vectorization resulted in 0 features. Cannot build Annoy index. Check input content.")
+            return None
+        
         # --- Fase 3: Costruzione Indice Annoy ---
         self.logger.info("Building Annoy index...")
-        annoy_index = AnnoyIndex(self.vector_size, config.ANNOY_METRIC)
+        annoy_index = AnnoyIndex(actual_vector_size, config.ANNOY_METRIC)
         for i in range(tfidf_matrix.shape[0]):
             vector = tfidf_matrix[i].toarray()[0]
             annoy_index.add_item(i, vector)
@@ -66,7 +72,7 @@ class ModelBuilder:
         idx_to_title = pd.Series(df_processed['book_title'], index=df_processed.index).to_dict()
 
         return RecommenderModel(
-            vector_size=self.vector_size,
+            vector_size=actual_vector_size,
             vectorizer=vectorizer,
             index=annoy_index,
             book_metadata=df_processed[['book_title', 'page_count']],
@@ -76,11 +82,27 @@ class ModelBuilder:
 
     def _prepare_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """Pulisce e prepara il DataFrame per l'indicizzazione."""
+        '''
         df_copy = df.copy()
         df_copy = df_copy.sort_values(by='book_id').reset_index(drop=True)
         df_copy['page_count'] = pd.to_numeric(df_copy['page_count'], errors='coerce')
         df_copy['content'] = df_copy['book_title'].fillna('') + ' ' + df_copy['description'].fillna('')
         df_copy.drop_duplicates(subset=['book_title'], inplace=True)
+        return df_copy.reset_index(drop=True)
+        '''
+        """
+        Pulisce e prepara il DataFrame. La colonna 'content' è già fornita.
+        """
+        df_copy = df.copy()
+        # Assicura che non ci siano ID o titoli duplicati/mancanti
+        df_copy.dropna(subset=['book_id', 'book_title'], inplace=True)
+        df_copy.drop_duplicates(subset=['book_id'], inplace=True)
+        
+        df_copy = df_copy.sort_values(by='book_id').reset_index(drop=True)
+        df_copy['page_count'] = pd.to_numeric(df_copy['page_count'], errors='coerce')
+        
+        # La colonna 'content' non viene più creata qui! È già presente.
+        #df_copy.drop_duplicates(subset=['book_title'], inplace=True)
         return df_copy.reset_index(drop=True)
 
 @dataclass

@@ -1,6 +1,6 @@
 # recommender/repository.py
 import pandas as pd
-from typing import Any
+from typing import Any, List, Set
 from etl.MongoDBConnection import MongoDBConnection
 from core.utils.LoggerManager import LoggerManager
 
@@ -36,6 +36,83 @@ class BookRepository:
 
         self.logger.info(f"Successfully fetched {len(df)} books.")
         return df
+        
+    def get_all_books_with_related_data(self) -> List[dict]:
+        """
+        Carica tutti i libri e li arricchisce con i dati dei generi
+        da 'book_genres' e 'book_genres_scraped' usando un'unica pipeline di aggregazione.
+        """
+        self.logger.info("Fetching books and joining with genre collections...")
+        pipeline = [
+            {
+                '$lookup': {
+                    'from': 'book_genres',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'book_genres_data'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'book_genres_scraped',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'scraped_genres_data'
+                }
+            },
+            # "$unwind" per de-normalizzare i risultati dei lookup.
+            # usiamo preserveNullAndEmptyArrays per non perdere libri senza generi.
+            {'$unwind': {'path': '$book_genres_data', 'preserveNullAndEmptyArrays': True}},
+            {'$unwind': {'path': '$scraped_genres_data', 'preserveNullAndEmptyArrays': True}},
+            {
+                '$project': {
+                    '_id': 0,
+                    'book_id': 1,
+                    'book_title': '$book_title', # Usiamo 'title' come da mapping
+                    'description': 1,
+                    'page_count': '$num_pages', # Usiamo 'num_pages' come da mapping
+                    'popular_shelves': 1,
+                    'genres': '$book_genres_data.genres',
+                    'scraped_genres': '$scraped_genres_data.genres'
+                }
+            }
+        ]
+        
+        cursor = self.db['books'].aggregate(pipeline)
+        results = list(cursor)
+        self.logger.info(f"Successfully fetched and aggregated data for {len(results)} books.")
+        return results
+
+    def get_top_popular_shelves(self, limit: int = 1000) -> Set[str]:
+        """
+        Esegue un'aggregazione per trovare i nomi dei "popular shelves" più comuni
+        in tutta la collection.
+        """
+        self.logger.info(f"Fetching top {limit} popular shelves...")
+        pipeline = [
+            {'$unwind': '$popular_shelves'},
+            {
+                '$addFields': {
+                    'shelf_count_int': {
+                        '$toInt': '$popular_shelves.count'
+                    }
+                }
+            },
+            {
+                '$group': {
+                    '_id': '$popular_shelves.name',
+                    'total_count': {'$sum': '$shelf_count_int'}
+                }
+            },
+            {'$sort': {'total_count': -1}},
+            {'$limit': limit},
+            {'$project': {'_id': 1}}
+        ]
+        
+        cursor = self.db['books'].aggregate(pipeline)
+        top_shelves = {doc['_id'] for doc in cursor}
+        self.logger.info(f"Found {len(top_shelves)} unique top shelves.")
+        return top_shelves
     
 class UserInteractionRepository:
     """

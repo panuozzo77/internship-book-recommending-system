@@ -1,5 +1,6 @@
 # main.py or usage_example.py
 
+from recommender.aggregator import FeatureAggregator
 from recommender.repository import BookRepository, UserInteractionRepository # Importa il nuovo repo
 from recommender.facade import UserRecommenderFacade # Importa la nuova facade
 from recommender.model import ModelBuilder, ModelPersister
@@ -43,7 +44,30 @@ def run_recommender_for_user(user_id):
     else:
         print("Nessuna raccomandazione generata (l'utente potrebbe non avere una cronologia).")
 
-def build_and_save_model():
+def build_and_save_model_2():
+    """Script per costruire e salvare il modello una tantum."""
+    # 1. Inizializza le dipendenze
+    db_conn = MongoDBConnection()
+    path_registry = PathRegistry()
+    
+    # 2. Aggrega e prepara tutte le feature
+    repo = BookRepository(db_conn)
+    aggregator = FeatureAggregator(repo)
+    features_df = aggregator.aggregate_features_for_model()
+    
+    if features_df.empty:
+        print("Nessun dato aggregato, impossibile costruire il modello.")
+        return
+    
+    # 3. Costruisci il modello partendo dal DataFrame arricchito
+    builder = ModelBuilder()
+    model = builder.build(features_df)
+    
+    # 4. Salva il modello
+    if model:
+        persister = ModelPersister(path_registry)
+        persister.save(model, version="1.0")
+def build_and_save_model_1():
     """Script per costruire e salvare il modello una tantum."""
     # 1. Inizializza le dipendenze
     db_conn = MongoDBConnection()
@@ -68,4 +92,5 @@ if __name__ == "__main__":
     PathRegistry().set_path('processed_datasets_dir', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/recommendation')
     # Eseguire per usare il raccomandatore a livello utente
     run_recommender_for_user('8842281e1d1347389f2ab93d60773d4d')
-    #build_and_save_model()
+
+    #build_and_save_model_2()
