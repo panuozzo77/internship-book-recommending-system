@@ -140,6 +140,52 @@ class UserInteractionRepository:
                 }
             },
             { '$unwind': '$book_details' },
+            # --- NUOVI STADI PER ARRICCHIRE CON I GENERI ---
+            {
+                '$lookup': {
+                    'from': 'book_genres',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'book_genres_data'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'book_genres_scraped',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'scraped_genres_data'
+                }
+            },
+            # De-normalizziamo i risultati per averli a disposizione
+            {'$unwind': {'path': '$book_genres_data', 'preserveNullAndEmptyArrays': True}},
+            {'$unwind': {'path': '$scraped_genres_data', 'preserveNullAndEmptyArrays': True}},
+            {
+                '$project': {
+                    '_id': 0,
+                    'user_id': 1,
+                    'book_id': 1,
+                    'book_title': '$book_details.book_title',
+                    'rating': '$rating',
+                    'page_count': '$book_details.page_count', # Aggiunto per il re-ranking
+                    # Includiamo i dati di genere nel risultato finale
+                    'genres': '$book_genres_data.genres',
+                    'scraped_genres': '$scraped_genres_data.genres'
+                }
+            }
+        ]
+        '''
+        [
+            { '$match': { 'user_id': user_id } },
+            {
+                '$lookup': {
+                    'from': 'books',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'book_details'
+                }
+            },
+            { '$unwind': '$book_details' },
             {
                 '$project': {
                     '_id': 0,
@@ -151,6 +197,7 @@ class UserInteractionRepository:
                 }
             }
         ]
+        '''
         
         cursor = self.db[self.collection_name].aggregate(pipeline)
         df = pd.DataFrame(list(cursor))

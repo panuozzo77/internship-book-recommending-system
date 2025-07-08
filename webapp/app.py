@@ -1,4 +1,5 @@
 import os
+import re
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -6,7 +7,7 @@ from datetime import datetime
 
 # --- CONFIGURAZIONE ---
 # In un'app reale, questi valori verrebbero da un file di configurazione
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://mindsdb:password@localhost:27017/?authSource=gr_recommender")
 DB_NAME = os.getenv("DB_NAME", "gr_recommender")
 
 app = Flask(__name__)
@@ -33,18 +34,76 @@ def index():
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_book():
-    """Pagina per cercare e aggiungere un nuovo libro."""
+    """Pagina per cercare e aggiungere un nuovo libro con ricerca avanzata per autore."""
     search_results = []
+    query = ""
+
     if request.method == 'POST':
-        query = request.form.get('query')
+        query = request.form.get('query', '').strip()
+        
         if query:
-            # Esegue la ricerca testuale sull'indice che abbiamo creato
-            search_results = list(books_collection.find(
-                {'$text': {'$search': query}},
-                {'score': {'$meta': 'textScore'}} # Ordina per rilevanza
-            ).sort([('score', {'$meta': 'textScore'})]).limit(20))
+            author_query = None
+            book_title_query = query
+
+            author_pattern = r'\{(.*?)\}'
+            match = re.search(author_pattern, query)
+
+            if match:
+                author_query = match.group(1).strip()
+                book_title_query = re.sub(author_pattern, '', query).strip()
+            
+            if author_query:
+                # --- INIZIO PIPELINE DI AGGREGAZIONE CORRETTA ---
+                pipeline = []
+                
+                if book_title_query:
+                    pipeline.append({
+                        '$match': {
+                            '$text': {'$search': book_title_query}
+                        }
+                    })
+                
+                pipeline.append({
+                    '$lookup': {
+                        'from': 'authors',
+                        # --- MODIFICA CHIAVE QUI ---
+                        # Usa il percorso corretto per il campo di join
+                        'localField': 'author_id.author_id', 
+                        # --------------------------
+                        'foreignField': 'author_id',
+                        'as': 'author_details'
+                    }
+                })
+                
+                # Questa parte non ha bisogno di modifiche, ma assicuriamoci che sia corretta
+                match_criteria = {
+                    'author_details.name': {'$regex': author_query, '$options': 'i'}
+                }
+                # Assicura che la join abbia prodotto un risultato
+                match_criteria['author_details'] = {'$ne': []}
+                
+                pipeline.append({'$match': match_criteria})
+                
+                if book_title_query:
+                    pipeline.append({'$addFields': {'score': {'$meta': 'textScore'}}})
+                    pipeline.append({'$sort': {'score': -1}})
+                else:
+                    pipeline.append({'$sort': {'book_title': 1}}) # Usa 'book_title' come da tuo schema
+                
+                pipeline.append({'$limit': 20})
+                
+                print(f"Eseguo pipeline di aggregazione corretta per autore '{author_query}' e titolo '{book_title_query}'")
+                search_results = list(books_collection.aggregate(pipeline))
+                # --- FINE PIPELINE DI AGGREGAZIONE CORRETTA ---
+
+            elif book_title_query:
+                print(f"Eseguo ricerca testuale per '{book_title_query}'")
+                search_results = list(books_collection.find(
+                    {'$text': {'$search': book_title_query}},
+                    {'score': {'$meta': 'textScore'}}
+                ).sort([('score', {'$meta': 'textScore'})]).limit(20))
     
-    return render_template('add_book.html', search_results=search_results)
+    return render_template('add_book.html', search_results=search_results, previous_query=query)
 
 @app.route('/save', methods=['POST'])
 def save_book():

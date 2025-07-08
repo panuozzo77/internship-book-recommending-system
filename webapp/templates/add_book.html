@@ -8,7 +8,7 @@
 
     <form method="post" class="mb-4">
         <div class="input-group">
-            <input type="text" name="query" class="form-control" placeholder="Es: Dune, Harry Potter, ..." required>
+            <input type="text" name="query" class="form-control" placeholder="Cerca un libro o un autore con {nome autore}..." value="{{ previous_query | default('', true) }}" required>
             <button type="submit" class="btn btn-primary">Cerca</button>
         </div>
     </form>

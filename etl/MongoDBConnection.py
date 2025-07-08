@@ -44,11 +44,27 @@ class MongoDBConnection:
             db_settings = app_config.get('database', {})
             mongo_uri = db_settings.get('uri')
             db_name_for_connection = db_settings.get('db_name') # From main config.json
+            username = db_settings.get('username')
+            password = db_settings.get('password')
+
+            client_args = {
+                "serverSelectionTimeoutMS": 5000
+            }
 
             if not mongo_uri: raise ValueError("MongoDB URI not in app config's database section.")
             if not db_name_for_connection: raise ValueError("Database name ('db_name') not in app config's database section.")
+            
+            if username and password:
+                client_args['username'] = username
+                client_args['password'] = password
+                logger.info("Attempting to connect to MongoDB with username/password authentication.")
+            else:
+                logger.info("Attempting to connect to MongoDB without authentication.")
 
-            self.__class__._client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+            self.__class__._client = MongoClient(mongo_uri, **client_args)
+
+            
+
             self.__class__._client.admin.command('ismaster')
             self.__class__._db = self.__class__._client[db_name_for_connection]
             logger.info(f"MongoDBConnection successfully connected to default DB: {self.__class__._db.name} specified in {main_app_config_path}")
