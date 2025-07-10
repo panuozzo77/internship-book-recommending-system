@@ -44,50 +44,87 @@ def parse_calibre_opf_output(opf_output: str, logger: logging.Logger) -> Optiona
 # Parser per lo script Rust (firma aggiornata per logging.Logger)
 def parse_goodreads_rust_scraper_output(output: str, logger: logging.Logger) -> Optional[BookMetadata]:
     """
-    Parser per l'output testuale dello script Rust che stampa una struct BookMetadata.
+    Parser aggiornato e preciso per l'output reale dello scraper Rust di Goodreads.
+    Estrae i dati basandosi sulla struttura `BookMetadata { ... }`.
     """
     data: BookMetadata = {}
-    logger.debug(f"GoodreadsRustParser: Inizio parsing output: {output[:300]}...")
+    logger.debug("GoodreadsRustParser: Parsing new output structure...")
 
-    desc_match = re.search(r'description: Some\(\s*"( ((?:\\"|[^"])*) )"\s*,\s*\),', output, re.DOTALL)
-    if desc_match:
-        description_raw = desc_match.group(1)
-        data['description'] = description_raw.replace('\\"', '"').replace('\\n', '\n').replace('\\t', '\t').replace('\\\\', '\\')
-        logger.debug(f"GoodreadsRustParser: Descrizione trovata: {data['description'][:50]}...")
-    else:
-        logger.debug("GoodreadsRustParser: Descrizione non trovata.")
+    # Funzione helper per estrarre stringhe escapate da Rust
+    def unescape(s: str) -> str:
+        return s.replace('\\"', '"').replace('\\n', '\n').replace('\\t', '\t').replace('\\\\', '\\')
 
-    pages_match = re.search(r'page_count: Some\(\s*(\d+)\s*,\s*\),', output)
-    if pages_match:
-        try:
-            data['page_count'] = int(pages_match.group(1))
-            logger.debug(f"GoodreadsRustParser: Page count trovato: {data['page_count']}")
-        except ValueError:
-            logger.warning(f"GoodreadsRustParser: page_count non valido nel testo: {pages_match.group(1)}")
-    else:
-        logger.debug("GoodreadsRustParser: Page count non trovato.")
+    # --- Titolo e Sottotitolo ---
+    title_match = re.search(r'title: "(.*?)",', output, re.DOTALL)
+    subtitle_match = re.search(r'subtitle: Some\(\s*"(.*?)"\s*,\s*\),', output, re.DOTALL)
+    
+    title_parts = []
+    if title_match:
+        title_parts.append(unescape(title_match.group(1)))
+    if subtitle_match:
+        title_parts.append(unescape(subtitle_match.group(1)))
+    
+    if title_parts:
+        data['title'] = ": ".join(title_parts)
 
+    # --- Descrizione ---
+    if desc_match := re.search(r'description: Some\(\s*"(.*?)"\s*,\s*\),', output, re.DOTALL):
+        data['description'] = unescape(desc_match.group(1))
+
+    # --- Conteggio Pagine ---
+    if pages_match := re.search(r'page_count: Some\(\s*(\d+)\s*,\s*\),', output):
+        data['page_count'] = int(pages_match.group(1))
+
+    # --- Anno di Pubblicazione ---
+    if date_match := re.search(r'publication_date: Some\(\s*(\d{4})-\d{2}-\d{2}T.*?\),', output):
+        data['publication_year'] = int(date_match.group(1))
+
+    # --- Editore ---
+    if pub_match := re.search(r'publisher: Some\(\s*"(.*?)"\s*,\s*\),', output, re.DOTALL):
+        data['publisher'] = unescape(pub_match.group(1))
+
+    # --- Autori (estratti dai "contributors") ---
+    contributors_block_match = re.search(r'contributors: \[\s*(.*?)\s*\],', output, re.DOTALL)
+    if contributors_block_match:
+        # Trova tutti i contributori che hanno il ruolo "Author"
+        authors_found = re.findall(r'BookContributor \{\s*name: "(.*?)",\s*role: "Author",\s*\}', contributors_block_match.group(1))
+        if authors_found:
+            data['authors'] = [unescape(name) for name in authors_found]
+            # Nota: non abbiamo un ID autore separato qui, quindi non impostiamo provider_specific_author_id
+
+    # --- Generi ---
     genres_block_match = re.search(r'genres: \[\s*(.*?)\s*\],', output, re.DOTALL)
     if genres_block_match:
-        genres_content = genres_block_match.group(1).strip()
-        if genres_content:
-            raw_genres = re.findall(r'"(.*?)"', genres_content)
-            cleaned_genres = [g.replace('\\"', '"').replace('\\\\', '\\') for g in raw_genres if g.strip()]
-            if cleaned_genres:
-                data['genres'] = cleaned_genres # _normalize_genres verrà chiamato dal chiamante
-                logger.debug(f"GoodreadsRustParser: Generi trovati: {data['genres']}")
-            else:
-                logger.debug("GoodreadsRustParser: Blocco generi trovato ma nessun genere valido estratto.")
-        else:
-            logger.debug("GoodreadsRustParser: Blocco generi trovato ma vuoto.")
-    else:
-        logger.debug("GoodreadsRustParser: Blocco generi non trovato.")
+        # Estrai tutte le stringhe tra virgolette nel blocco genres
+        raw_genres = re.findall(r'"(.*?)"', genres_block_match.group(1))
+        if raw_genres:
+            data['genres'] = [unescape(g) for g in raw_genres]
+            # Usiamo i generi anche come stima per i popular_shelves se non disponibili altrove
+            if 'popular_shelves' not in data:
+                data['popular_shelves'] = [{"name": g.lower(), "count": "0"} for g in data['genres']]
+
+    # --- Serie ---
+    series_block_match = re.search(r'series: Some\(\s*BookSeries \{\s*(.*?)\s*\}\s*,\s*\),', output, re.DOTALL)
+    if series_block_match:
+        series_content = series_block_match.group(1)
+        series_title_match = re.search(r'title: "(.*?)"', series_content)
+        if series_title_match:
+            # L'ID della serie non è esposto, quindi ne generiamo uno basato sul titolo per coerenza
+            series_name = unescape(series_title_match.group(1))
+            data['series'] = {
+                # Non avendo un ID, non possiamo impostarlo qui. Il repository se ne occuperà.
+                "name": series_name
+            }
+
+    # ID del libro (non sembra esserci nell'output, usiamo ISBN come fallback se disponibile)
+    if isbn_match := re.search(r'isbn: Some\(\s*"(.*?)"\s*,\s*\),', output, re.DOTALL):
+        data['provider_specific_id'] = f"GR_ISBN_{unescape(isbn_match.group(1))}"
     
     if data:
-        logger.info(f"GoodreadsRustParser: Dati parsati con successo: {list(data.keys())}")
+        logger.info(f"GoodreadsRustParser: Parsed data successfully. Fields: {list(data.keys())}")
         return data
     else:
-        logger.info("GoodreadsRustParser: Nessun dato utile parsato.")
+        logger.info("GoodreadsRustParser: No useful data parsed from the output.")
         return None
 
 
@@ -140,18 +177,8 @@ class CliBookProvider(BookDataProvider):
         return cmd_list
 
     def fetch_data(self, title: str, authors: List[str], existing_data: Optional[BookMetadata] = None) -> Optional[BookMetadata]:
-        author_for_rust_script = authors[0] if authors else ""
-        
-        cmd_list: List[str]
-        if self._provider_name == "GoodreadsRustScraper":
-             cmd_list = list(self.base_command_args)
-             cmd_list.append(title)
-             if author_for_rust_script:
-                 cmd_list.append(author_for_rust_script)
-        else:
-            cmd_list = self._build_command(title, authors)
-
-        self.logger.debug(f"{self.get_name()}: Esecuzione comando: {' '.join(shlex.quote(str(s)) for s in cmd_list)} in CWD: {self.cwd or os.getcwd()}")
+        cmd_list = self._build_command(title, authors)
+        self.logger.debug(f"{self.get_name()}: Executing command: {' '.join(shlex.quote(str(s)) for s in cmd_list)} in CWD: {self.cwd}")
 
         try:
             result = subprocess.run(
@@ -159,58 +186,39 @@ class CliBookProvider(BookDataProvider):
                 encoding='utf-8', errors='replace', shell=False, cwd=self.cwd
             )
 
-            actual_output = result.stdout
-            if "BookMetadata {" in result.stdout: # Per output Rust struct
-                actual_output = result.stdout[result.stdout.find("BookMetadata {"):]
-            elif result.stdout.strip().startswith("{"): # Per output JSON
-                 actual_output = result.stdout[result.stdout.find("{"):]
-
+            # Gestione del fallimento del comando
             if result.returncode != 0:
+                # Gestione specifica per il panic "Book not found" di Rust
+                if result.returncode == 101 and "Book not found" in result.stderr:
+                    self.logger.info(f"{self.get_name()}: Book '{title}' not found by the Rust scraper (handled panic).")
+                    return None
+                
+                # Per tutti gli altri errori, logga un warning
                 self.logger.warning(
-                    f"{self.get_name()}: Comando per '{title}' terminato con errore (codice {result.returncode}).\n"
-                    f"  Comando: {' '.join(shlex.quote(str(s)) for s in cmd_list)}\n"
-                    f"  CWD: {self.cwd}\n  Stderr: {result.stderr.strip()}\n"
-                    f"  Stdout (parte utile): {actual_output[:500].strip()}..."
+                    f"{self.get_name()}: Command failed for '{title}' (code {result.returncode}).\n"
+                    f"  CWD: {self.cwd}\n  Stderr: {result.stderr.strip()}"
                 )
                 return None
+
+            output_to_parse = result.stdout
+            if not output_to_parse.strip():
+                self.logger.info(f"{self.get_name()}: No stdout from command for '{title}'.")
+                return None
+
+            parsed_data = self.output_parser(output_to_parse, self.logger)
             
-            if not actual_output.strip():
-                self.logger.info(f"{self.get_name()}: Nessun output utile (dopo pulizia) da stdout per '{title}'. Full stdout: {result.stdout.strip()}")
-                return None
-
-            # Passa self.logger (che è logging.Logger) al parser
-            parsed_data = self.output_parser(actual_output, self.logger)
-
             if parsed_data:
-                final_data: BookMetadata = {}
-                for key_typed, value_typed in parsed_data.items():
-                    key = str(key_typed) # Assicura che la chiave sia una stringa
-                    value = value_typed
-                    if not existing_data or key not in existing_data:
-                        if key == "description" and isinstance(value, str) and value.strip():
-                            final_data["description"] = value
-                        elif key == "page_count" and isinstance(value, int) and value > 0:
-                            final_data["page_count"] = value
-                        elif key == "genres" and isinstance(value, list) and value:
-                            # La normalizzazione ora avviene nel BookDataProvider base
-                            final_data["genres"] = self._normalize_genres(value) 
-                
-                if final_data:
-                    self.logger.info(f"{self.get_name()}: Dati trovati per '{title}': {list(final_data.keys())}")
-                    return final_data
-                else:
-                    self.logger.info(f"{self.get_name()}: Nessun nuovo dato utile (o già esistente) trovato da CLI per '{title}'.")
-                    return None
-            else:
-                self.logger.info(f"{self.get_name()}: Parser non ha estratto dati utili per '{title}'.")
-                return None
+                # Logga quali campi sono stati restituiti dal parser
+                self.logger.info(f"{self.get_name()}: Provider returning data with fields: {list(parsed_data.keys())}")
+            
+            return parsed_data # <<< RESTITUISCE TUTTI I DATI PARSATI
 
         except FileNotFoundError:
-            self.logger.error(f"{self.get_name()}: Comando '{cmd_list[0]}' non trovato. Assicurati sia installato e nel PATH.")
+            self.logger.error(f"{self.get_name()}: Command '{cmd_list[0]}' not found. Is it in your PATH?")
             return None
         except subprocess.TimeoutExpired:
-            self.logger.error(f"{self.get_name()}: Timeout ({self.timeout}s) durante esecuzione comando per '{title}'.")
+            self.logger.error(f"{self.get_name()}: Timeout ({self.timeout}s) executing command for '{title}'.")
             return None
         except Exception as e:
-            self.logger.error(f"{self.get_name()}: Errore imprevisto esecuzione comando per '{title}': {e}", exc_info=True)
+            self.logger.error(f"{self.get_name()}: Unexpected error executing command for '{title}': {e}", exc_info=True)
             return None
