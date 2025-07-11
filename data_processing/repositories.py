@@ -26,6 +26,7 @@ class MongoBookRepository:
         self.genres_collection = self.db.book_genres
         self.adder_log_collection = self.db.book_addition_log
         self.updater_log_collection = self.db.book_update_log
+        self.scraped_genres_collection = self.db.book_genres_scraped
 
     def _get_next_sequence_value(self, sequence_name: str) -> str:
         """Genera un ID progressivo stringa (es. 'add_book_124')."""
@@ -101,6 +102,15 @@ class MongoBookRepository:
 
     def add_genres(self, book_id: str, genres: Dict[str, int]) -> InsertOneResult:
         return self.genres_collection.insert_one({"book_id": book_id, "genres": genres})
+
+    def add_scraped_genres(self, book_id: str, genres: List[str]) -> InsertOneResult:
+        """Salva i generi grezzi ottenuti dallo scraping."""
+        genres_doc = {genre.replace(".", "_"): 1 for genre in genres}
+        return self.scraped_genres_collection.insert_one({
+            "book_id": book_id,
+            "genres": genres_doc,
+            "last_updated": datetime.datetime.now(datetime.timezone.utc)
+        })
 
     def update_book(self, book_id: str, update_payload: Dict[str, Any]) -> UpdateResult:
         return self.books_collection.update_one({"book_id": book_id}, {"$set": update_payload})

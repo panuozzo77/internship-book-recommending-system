@@ -87,15 +87,17 @@ def main():
     else:
         logger.warning("Variabile d'ambiente RUST_SCRAPER_DIR non impostata. Goodreads provider disabilitato.")
 
-    # google_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
-    # if google_api_key:
-    #     providers.append(GoogleBooksProvider(api_key=google_api_key))
-    # else:
-    #    logger.warning("GOOGLE_BOOKS_API_KEY non trovata. GoogleBooksProvider disabilitato.")
+    google_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
+    if google_api_key:
+         providers.append(GoogleBooksProvider(api_key=google_api_key))
+    else:
+        logger.warning("GOOGLE_BOOKS_API_KEY non trovata. GoogleBooksProvider disabilitato.")
 
     if not providers:
         logger.critical("Nessun provider di dati configurato. Impossibile continuare.")
         return
+    
+    providers.append(OpenLibraryProvider())
 
     repository = MongoBookRepository(db)
     aggregator = MetadataAggregator(providers)
@@ -111,7 +113,7 @@ def main():
 
     # A. Aggiungere un nuovo libro
     print(">>> CASO 1: Aggiungere un libro non esistente...")
-    result_add = creation_service.add_new_book(title="Bay City", author_name="Richard K. Morgan")
+    result_add = creation_service.add_new_book(title="108 rintocchi", author_name="Yoshimura Keiko")
     print(f"Esito: {result_add}\n")
     
     '''

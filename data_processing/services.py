@@ -49,6 +49,7 @@ class BookCreationService:
 
             scraped_genres = metadata.get("genres", [])
             if scraped_genres:
+                self.repo.add_scraped_genres(new_book_id, scraped_genres)
                 mapped_genres = map_scraped_genres_to_predefined(scraped_genres)
                 if mapped_genres:
                     self.repo.add_genres(new_book_id, mapped_genres)
