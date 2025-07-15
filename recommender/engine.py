@@ -21,6 +21,46 @@ class ReRanker(Protocol):
     ) -> List[Tuple[int, float]]:
         ...
 
+class GenrePreferenceReRanker:
+    """
+    Ri-ordina i candidati premiando i libri con generi preferiti dall'utente
+    e penalizzando quelli con generi non graditi.
+    """
+    def rerank(
+        self,
+        candidates: List[Tuple[int, float]],
+        model: RecommenderModel,
+        context: dict
+    ) -> List[Tuple[int, float]]:
+        preferred_genres = context.get('preferred_genres', set())
+        disliked_genres = context.get('disliked_genres', set())
+        
+        # Se non abbiamo preferenze sui generi, non facciamo nulla
+        if not preferred_genres and not disliked_genres:
+            return candidates
+
+        reranked_scores = []
+        for book_idx, similarity_score in candidates:
+            genre_bonus = 0.0
+            
+            # Recupera i generi del libro candidato dai metadati
+            book_genres = set(model.book_metadata.iloc[book_idx]['key_genres'])
+            
+            if book_genres:
+                # Calcola l'intersezione con i generi preferiti e non graditi
+                num_preferred_matches = len(book_genres.intersection(preferred_genres))
+                num_disliked_matches = len(book_genres.intersection(disliked_genres))
+                
+                # Applica bonus e malus
+                genre_bonus = (num_preferred_matches - num_disliked_matches) * config.GENRE_PREFERENCE_BONUS_WEIGHT
+
+            final_score = similarity_score + genre_bonus
+            reranked_scores.append((book_idx, final_score))
+            
+        # Ordina in base al nuovo punteggio finale
+        reranked_scores.sort(key=lambda x: x[1], reverse=True)
+        return reranked_scores
+
 class PageCountReRanker:
     """
     Ri-ordina i candidati per premiare i libri con un numero di pagine

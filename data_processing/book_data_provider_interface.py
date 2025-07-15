@@ -1,71 +1,83 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, TypedDict, Literal, Union
+from typing import List, Dict, Optional, TypedDict, Union, Any
 import re
 
-# Definisce la struttura dei metadati che ogni provider dovrebbe restituire
+# Definisce la struttura dei dati di una serie
+class BookSeriesMetadata(TypedDict, total=False):
+    id: str  # ID della serie fornito dal provider (es. "GR_SER_40582")
+    name: str
+
+# Definisce la struttura completa dei metadati che ogni provider può restituire.
+# Usando `total=False`, tutti i campi sono opzionali.
 class BookMetadata(TypedDict, total=False):
+    # --- ID forniti dal provider ---
+    provider_specific_id: str          # Es. "GR_BOOK_18115", "OL_WORK_OL27448W"
+    provider_specific_author_id: str   # Es. "GR_AUTH_1077326"
+    
+    # --- Dati principali del libro ---
+    title: str
     description: str
     page_count: int
-    genres: List[str] # Lista di stringhe di genere, es: ["Fiction", "Science Fiction"]
-    # Altri campi potrebbero essere: publisher, publication_date, isbn, etc.
-
-# Stato per il log di augmentation_log a livello di libro
-AugmentationStatus = Literal[
-    "SUCCESS_FULL",         # Tutti i campi richiesti trovati
-    "SUCCESS_PARTIAL",      # Alcuni campi trovati
-    "NOT_FOUND",            # Nessun dato utile trovato da nessun provider
-    "ALREADY_PROCESSED",    # Già processato con successo in precedenza
-    "ERROR_PROVIDER",       # Errore durante l'interazione con un provider
-    "ERROR_INTERNAL"        # Errore nello script di augmentation
-]
-
-# Stato per ogni tentativo di provider nel log
-ProviderAttemptStatus = Literal["SUCCESS", "NOT_FOUND", "ERROR"]
-
+    publisher: str
+    publication_year: int
+    
+    # --- Dati collegati ---
+    authors: List[str]                 # Lista di nomi di autori
+    genres: List[str]                  # Generi in formato libero (es. ["Science Fiction", "Dystopian"])
+    popular_shelves: List[Dict[str, Any]] # Es. [{"count": "123", "name": "to-read"}]
+    series: BookSeriesMetadata         # Informazioni sulla serie a cui appartiene il libro
 
 class BookDataProvider(ABC):
     """
     Interfaccia astratta per i provider di dati sui libri.
+    Definisce i metodi che ogni provider concreto deve implementare.
     """
     @abstractmethod
     def get_name(self) -> str:
-        """Restituisce il nome del provider (es. "GoogleBooks", "CalibreCLI")."""
+        """Restituisce il nome leggibile del provider (es. "GoogleBooks", "OpenLibrary")."""
         pass
 
     @abstractmethod
     def fetch_data(self, title: str, authors: List[str], existing_data: Optional[BookMetadata] = None) -> Optional[BookMetadata]:
         """
-        Cerca i dati del libro.
+        Cerca i metadati di un libro.
+
         Args:
-            title: Il titolo del libro.
-            authors: Una lista di nomi di autori.
-            existing_data: Dati già raccolti da provider precedenti, per evitare di cercare info già presenti.
+            title: Il titolo del libro da cercare.
+            authors: Una lista di nomi di autori associati.
+            existing_data: Metadati già raccolti da altri provider o dal DB.
+                           Il provider dovrebbe evitare di cercare dati già presenti e validi.
+
         Returns:
-            Un dizionario BookMetadata con i dati trovati, o None se non trova nulla di utile.
+            Un dizionario `BookMetadata` con i dati trovati, o `None` se non trova nulla di utile.
         """
         pass
 
     def _normalize_genres(self, raw_genres: Union[List[str], str, None]) -> List[str]:
         """
-        Metodo helper per normalizzare i generi in una lista di stringhe pulite.
-        Può essere sovrascritto o utilizzato dai provider concreti.
+        Metodo helper (concreto) per pulire e standardizzare una lista di generi.
+        I provider possono usarlo per garantire un output consistente.
         """
         if not raw_genres:
             return []
         
         processed_genres = set()
+        
+        # Gestisce sia stringhe separate da delimitatori sia liste di stringhe
         if isinstance(raw_genres, str):
-            # Split per virgola o punto e virgola, trimma spazi, converte in lowercase
-            # e rimuove duplicati e stringhe vuote
-            genres_list = re.split(r'[,;]', raw_genres)
+            genres_list = re.split(r'[,;/]', raw_genres)
         elif isinstance(raw_genres, list):
             genres_list = raw_genres
         else:
             return []
 
+        # Pulisce ogni genere
         for g in genres_list:
             if isinstance(g, str):
+                # Rimuove spazi extra, converte in minuscolo e rimuove frasi comuni
                 genre_cleaned = g.strip().lower()
+                genre_cleaned = re.sub(r'\s*\([^)]*\)', '', genre_cleaned) # Rimuove testo in parentesi
                 if genre_cleaned:
                     processed_genres.add(genre_cleaned)
+                    
         return sorted(list(processed_genres))

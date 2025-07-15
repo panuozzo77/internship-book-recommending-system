@@ -1,6 +1,8 @@
 # .gitignore for Python/MongoDB/Data Processing Project
 recommendation/
 
+*.png
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

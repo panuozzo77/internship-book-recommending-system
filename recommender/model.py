@@ -75,7 +75,7 @@ class ModelBuilder:
             vector_size=actual_vector_size,
             vectorizer=vectorizer,
             index=annoy_index,
-            book_metadata=df_processed[['book_title', 'page_count']],
+            book_metadata=df_processed[['book_title', 'page_count', 'key_genres']],
             title_to_idx=title_to_idx,
             idx_to_title=idx_to_title
         )
@@ -100,6 +100,12 @@ class ModelBuilder:
         
         df_copy = df_copy.sort_values(by='book_id').reset_index(drop=True)
         df_copy['page_count'] = pd.to_numeric(df_copy['page_count'], errors='coerce')
+
+        if 'key_genres' not in df_copy.columns:
+            df_copy['key_genres'] = [[] for _ in range(len(df_copy))]
+        else:
+            # Assicura che i valori nulli siano liste vuote
+            df_copy['key_genres'] = df_copy['key_genres'].apply(lambda x: x if isinstance(x, list) else [])
         
         # La colonna 'content' non viene più creata qui! È già presente.
         #df_copy.drop_duplicates(subset=['book_title'], inplace=True)

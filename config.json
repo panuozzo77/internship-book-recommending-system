@@ -9,8 +9,10 @@
     },
     "database": {
         "type": "mongodb",
-        "uri": "mongodb://localhost:27017/",
-        "db_name": "gr_recommender"
+        "uri": "mongodb://mindsdb:password@localhost:27017/?authSource=gr_recommender",
+        "db_name": "gr_recommender",
+        "username": "mindsdb",
+        "password": "password"
     },
     "data_paths": {
         "raw_datasets_dir": "/home/cristian/Documents/dataset",

@@ -22,11 +22,19 @@ class FeatureAggregator:
         return self._top_shelves_cache
 
     def _process_tags(self, book_data: dict, top_shelves: Set[str]) -> str:
+        # Questo metodo ora è privato e restituisce solo la stringa per il TF-IDF
+        # La logica di estrazione dei generi è stata spostata in un nuovo metodo.
+        _, weighted_string = self._extract_genres_and_create_weighted_string(book_data, top_shelves)
+        return weighted_string
+
+    # --- NUOVO METODO PER ESTRARRE I GENERI E LA STRINGA PESATA ---
+    def _extract_genres_and_create_weighted_string(self, book_data: dict, top_shelves: Set[str]) -> (Set[str], str):
         """
-        Costruisce una stringa pesata di tag e generi per un singolo libro.
-        I tag vengono normalizzati (lowercase, trattini sostituiti da spazi).
+        Estrae un set di generi unici e normalizzati per un libro
+        e costruisce anche la stringa pesata per il TF-IDF.
         """
         content_parts = []
+        key_genres = set()
         
         # 1. Processa popular_shelves (filtrati per i top N)
         shelves = book_data.get('popular_shelves', [])
@@ -34,33 +42,33 @@ class FeatureAggregator:
             for shelf in shelves:
                 name = shelf.get('name')
                 if name and name in top_shelves:
+                    normalized_name = name.replace('-', ' ').lower()
+                    key_genres.add(normalized_name)
                     try:
                         count = int(shelf.get('count', 0))
-                        # Normalizza il nome e lo ripete per ponderazione
-                        normalized_name = name.replace('-', ' ')
                         content_parts.extend([normalized_name] * count)
                     except (ValueError, TypeError):
-                        continue # Ignora se il conteggio non è un numero valido
+                        continue
         
         # 2. Processa i generi dal dataset originale
         genres = book_data.get('genres', {})
         if genres:
             for genre_group, count in genres.items():
-                # Separa generi composti come "history, historical fiction, biography"
-                individual_genres = [g.strip() for g in genre_group.split(',')]
+                individual_genres = [g.strip().replace('-', ' ').lower() for g in genre_group.split(',')]
                 for genre in individual_genres:
-                    normalized_genre = genre.replace('-', ' ')
-                    content_parts.extend([normalized_genre] * int(count))
+                    key_genres.add(genre)
+                    content_parts.extend([genre] * int(count))
         
         # 3. Processa i generi dallo scraping
         scraped_genres = book_data.get('scraped_genres', {})
         if scraped_genres:
             for genre, count in scraped_genres.items():
-                normalized_genre = genre.replace('-', ' ')
-                # Qui il conteggio è sempre 1, quindi basta aggiungere il genere
+                normalized_genre = genre.replace('-', ' ').lower()
+                key_genres.add(normalized_genre)
                 content_parts.extend([normalized_genre] * int(count))
                 
-        return " ".join(content_parts)
+        return key_genres, " ".join(content_parts)
+
 
     def aggregate_features_for_model(self) -> pd.DataFrame:
         """
@@ -73,22 +81,22 @@ class FeatureAggregator:
         
         processed_data = []
         for book in all_books_data:
-            # Combina descrizione e titolo
             description = book.get('description', '') or ''
             title = book.get('book_title', '') or ''
             
-            # Crea la stringa di tag e generi pesati
-            tags_string = self._process_tags(book, top_shelves)
+            # --- MODIFICATO ---
+            # Estrae sia i generi chiave sia la stringa di tag pesati
+            key_genres, tags_string = self._extract_genres_and_create_weighted_string(book, top_shelves)
             
             # Combina tutto in un'unica stringa di "contenuto"
-            # Dare più peso al titolo ripetendolo
             content = (f"{title} " * 3) + f"{description} {tags_string}"
             
             processed_data.append({
                 'book_id': book.get('book_id'),
                 'book_title': title,
                 'page_count': book.get('page_count'),
-                'content': content
+                'content': content,
+                'key_genres': list(key_genres) # Salviamo come lista per compatibilità con DataFrame
             })
             
         df = pd.DataFrame(processed_data)
