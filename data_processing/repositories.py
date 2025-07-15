@@ -112,6 +112,28 @@ class MongoBookRepository:
             "last_updated": datetime.datetime.now(datetime.timezone.utc)
         })
 
+    def upsert_scraped_genres(self, book_id: str, genres: List[str]) -> UpdateResult:
+        """Crea o aggiorna i generi grezzi ottenuti dallo scraping."""
+        genres_doc = {genre.replace(".", "_"): 1 for genre in genres}
+        return self.scraped_genres_collection.update_one(
+            {"book_id": book_id},
+            {
+                "$set": {
+                    "genres": genres_doc,
+                    "last_updated": datetime.datetime.now(datetime.timezone.utc)
+                }
+            },
+            upsert=True
+        )
+
+    def upsert_genres(self, book_id: str, genres: Dict[str, int]) -> UpdateResult:
+        """Crea o aggiorna i generi mappati."""
+        return self.genres_collection.update_one(
+            {"book_id": book_id},
+            {"$set": {"genres": genres}},
+            upsert=True
+        )
+
     def update_book(self, book_id: str, update_payload: Dict[str, Any]) -> UpdateResult:
         return self.books_collection.update_one({"book_id": book_id}, {"$set": update_payload})
 

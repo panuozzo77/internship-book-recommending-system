@@ -103,8 +103,22 @@ def main():
     aggregator = MetadataAggregator(providers)
 
     # Inietta le dipendenze nei servizi
-    creation_service = BookCreationService(repository, aggregator)
-    update_service = BookUpdateService(repository, aggregator)
+    use_llm_str = os.getenv("USE_LLM_MAPPER", "false").lower()
+    use_llm_mapper = use_llm_str in ["true", "1", "t"]
+    ollama_host = os.getenv("OLLAMA_HOST")
+
+    creation_service = BookCreationService(
+        repository,
+        aggregator,
+        use_llm_mapper=use_llm_mapper,
+        ollama_host=ollama_host
+    )
+    update_service = BookUpdateService(
+        repository,
+        aggregator,
+        use_llm_mapper=use_llm_mapper,
+        ollama_host=ollama_host
+    )
     
     logger.info("Sistema inizializzato. Avvio delle operazioni dimostrative.")
     print("-" * 60)

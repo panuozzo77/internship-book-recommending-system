@@ -6,15 +6,20 @@ from .book_data_provider_interface import BookMetadata, BookSeriesMetadata
 
 from .repositories import MongoBookRepository
 from .aggregators import MetadataAggregator
-from .genre_mapper import map_scraped_genres_to_predefined
+from .genre_mapper import map_scraped_genres_to_predefined, LLMGenreMapper
 from core.utils.LoggerManager import LoggerManager
 
 class BookCreationService:
     """Contiene la logica di business per creare un nuovo libro."""
-    def __init__(self, repository: MongoBookRepository, aggregator: MetadataAggregator):
+    def __init__(self, repository: MongoBookRepository, aggregator: MetadataAggregator, use_llm_mapper: bool = False, ollama_host: Optional[str] = None):
         self.repo = repository
         self.aggregator = aggregator
         self.logger: logging.Logger = LoggerManager().get_logger()
+        self.use_llm_mapper = use_llm_mapper
+        if self.use_llm_mapper and ollama_host:
+            self.llm_mapper = LLMGenreMapper(ollama_host=ollama_host)
+        else:
+            self.llm_mapper = None
 
     def add_new_book(self, title: str, author_name: str) -> Dict[str, Any]:
         """Metodo pubblico per aggiungere un nuovo libro."""
@@ -50,7 +55,16 @@ class BookCreationService:
             scraped_genres = metadata.get("genres", [])
             if scraped_genres:
                 self.repo.add_scraped_genres(new_book_id, scraped_genres)
-                mapped_genres = map_scraped_genres_to_predefined(scraped_genres)
+                if self.use_llm_mapper and self.llm_mapper:
+                    mapped_genres = self.llm_mapper.map_genres(
+                        title=metadata.get("title", ""),
+                        authors=metadata.get("authors", []),
+                        description=metadata.get("description", ""),
+                        scraped_genres=scraped_genres
+                    )
+                else:
+                    mapped_genres = map_scraped_genres_to_predefined(scraped_genres)
+                
                 if mapped_genres:
                     self.repo.add_genres(new_book_id, mapped_genres)
 
@@ -80,10 +94,15 @@ class BookCreationService:
 
 class BookUpdateService:
     """Contiene la logica di business per aggiornare un libro esistente."""
-    def __init__(self, repository: MongoBookRepository, aggregator: MetadataAggregator):
+    def __init__(self, repository: MongoBookRepository, aggregator: MetadataAggregator, use_llm_mapper: bool = False, ollama_host: Optional[str] = None):
         self.repo = repository
         self.aggregator = aggregator
         self.logger: logging.Logger = LoggerManager().get_logger()
+        self.use_llm_mapper = use_llm_mapper
+        if self.use_llm_mapper and ollama_host:
+            self.llm_mapper = LLMGenreMapper(ollama_host=ollama_host)
+        else:
+            self.llm_mapper = None
         
     def update_book(self, identifier: Dict[str, str]) -> Dict[str, Any]:
         """Metodo pubblico per aggiornare un libro, tramite ID o titolo/autore."""
@@ -113,6 +132,27 @@ class BookUpdateService:
             return {"status": "NO_NEW_DATA", "message": "No new metadata found."}
         
         update_payload = self._create_update_payload(book_doc, metadata)
+        
+        # Gestione aggiornamento generi
+        scraped_genres = metadata.get("genres")
+        if scraped_genres:
+            self.logger.info(f"Aggiornamento generi per il libro ID {book_id}...")
+            self.repo.upsert_scraped_genres(book_id, scraped_genres)
+            
+            if self.use_llm_mapper and self.llm_mapper:
+                mapped_genres = self.llm_mapper.map_genres(
+                    title=metadata.get("title", book_doc.get("book_title", "")),
+                    authors=metadata.get("authors", [author_name]),
+                    description=metadata.get("description", book_doc.get("description", "")),
+                    scraped_genres=scraped_genres
+                )
+            else:
+                mapped_genres = map_scraped_genres_to_predefined(scraped_genres)
+            
+            if mapped_genres:
+                self.repo.upsert_genres(book_id, mapped_genres)
+                self.logger.info(f"Generi mappati per il libro ID {book_id} salvati.")
+
         if not update_payload:
             self.logger.info(f"Nessun campo da aggiornare per il libro ID {book_id}.")
             self.repo.log_operation("update", "NO_CHANGES_NEEDED", {"book_id": book_id, **log_details})
@@ -125,7 +165,7 @@ class BookUpdateService:
                 self.repo.log_operation("update", "SUCCESS", {"book_id": book_id, "updated_fields": list(update_payload.keys()), **log_details})
                 return {"status": "SUCCESS", "book_id": book_id, "updated_fields": list(update_payload.keys())}
             else:
-                 return {"status": "NO_CHANGES_NEEDED", "message": "The book is already up-to-date."}
+                return {"status": "NO_CHANGES_NEEDED", "message": "The book is already up-to-date."}
         except Exception as e:
             self.logger.critical(f"Errore durante l'aggiornamento del libro ID {book_id}: {e}", exc_info=True)
             self.repo.log_operation("update", "ERROR", {"book_id": book_id, "reason": str(e), **log_details})
