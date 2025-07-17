@@ -119,12 +119,16 @@ class BookUpdateService:
         author_doc = self.repo.authors_collection.find_one({"author_id": {"$in": book_doc["author_id"]}})
         author_name = author_doc["name"] if author_doc else ""
 
-        # The book_doc is a dict from the database, so we need to cast it to BookMetadata
-        # to satisfy the type checker.
+        # Crea una copia del documento del libro e rimuovi i generi esistenti
+        # per forzare l'aggregatore a cercarli di nuovo.
+        book_doc_for_aggregator = book_doc.copy()
+        if "genres" in book_doc_for_aggregator:
+            del book_doc_for_aggregator["genres"]
+
         metadata = self.aggregator.fetch_best_metadata(
             book_doc["book_title"],
             [author_name],
-            existing_data=BookMetadata(**book_doc)
+            existing_data=BookMetadata(**book_doc_for_aggregator)
         )
         if not metadata:
             self.logger.warning(f"Nessun nuovo dato trovato per aggiornare il libro ID {book_id}.")

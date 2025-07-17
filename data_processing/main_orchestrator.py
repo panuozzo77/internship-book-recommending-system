@@ -127,8 +127,10 @@ def main():
 
     # A. Aggiungere un nuovo libro
     print(">>> CASO 1: Aggiungere un libro non esistente...")
-    result_add = creation_service.add_new_book(title="108 rintocchi", author_name="Yoshimura Keiko")
-    print(f"Esito: {result_add}\n")
+    #result_add = creation_service.add_new_book(title="la casa dei silenzi", author_name="Donato Carrisi")
+    book_id_to_update = 'add_book_5'
+    result_update = update_service.update_book(identifier={"book_id": book_id_to_update})
+    print(f"Esito: {result_update}\n")
     
     '''
     # B. Tentare di aggiungere un duplicato
