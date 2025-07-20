@@ -64,7 +64,7 @@ def recommend_for_user_id(user_id: str, top_n: int = 10) -> None:
     """Generate recommendations for a user ID."""
     logger = logger_manager.get_logger()
     logger.info(f"Generating recommendations for user: {user_id}")
-    
+    '''
     try:
         recommender = ContentBasedAnnoyRecommender()
         profiler = UserProfiler(recommender)
@@ -86,12 +86,14 @@ def recommend_for_user_id(user_id: str, top_n: int = 10) -> None:
             logger.error("Failed to create user profile")
     except Exception as e:
         logger.error(f"User recommendation failed: {e}", exc_info=True)
+        '''
 
 def recommend_from_profile_file(profile_path: str, top_n: int = 10) -> None:
     """Generate recommendations from a profile file."""
     logger = logger_manager.get_logger()
     logger.info(f"Generating recommendations from profile: {profile_path}")
     
+    '''
     try:
         recommender = ContentBasedAnnoyRecommender()
         profiler = UserProfiler(recommender)
@@ -109,6 +111,7 @@ def recommend_from_profile_file(profile_path: str, top_n: int = 10) -> None:
             logger.error("Failed to create profile from file")
     except Exception as e:
         logger.error(f"Profile recommendation failed: {e}", exc_info=True)
+    '''
 
 # --- Web UI Action ---
 def run_web_ui(app_config: Dict[str, Any]) -> None:
