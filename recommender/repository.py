@@ -1,8 +1,9 @@
 # recommender/repository.py
 import pandas as pd
-from typing import Any, List, Set
+from typing import Any, List, Set, Optional
 from etl.MongoDBConnection import MongoDBConnection
 from core.utils.LoggerManager import LoggerManager
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class BookRepository:
     """
@@ -206,3 +207,41 @@ class UserInteractionRepository:
             self.logger.warning(f"No interactions found for user_id '{user_id}'.")
         
         return df
+
+class UserRepository:
+    """
+    Manages user data persistence in MongoDB, including authentication.
+    """
+    def __init__(self, db_connection: MongoDBConnection, collection_name: str = 'users'):
+        self.db = db_connection.get_database()
+        self.collection = self.db[collection_name]
+        self.logger = LoggerManager().get_logger()
+
+    def create_user(self, username: str, password: str) -> Optional[Any]:
+        """
+        Creates a new user with a hashed password.
+        Returns the new user's ID if successful, otherwise None.
+        """
+        if self.find_user_by_username(username):
+            self.logger.warning(f"User '{username}' already exists.")
+            return None
+        
+        hashed_password = generate_password_hash(password)
+        user_data = {
+            'username': username,
+            'password': hashed_password
+        }
+        result = self.collection.insert_one(user_data)
+        self.logger.info(f"User '{username}' created successfully.")
+        return result.inserted_id
+
+    def find_user_by_username(self, username: str) -> Optional[dict]:
+        """Finds a user by their username."""
+        return self.collection.find_one({'username': username})
+
+    def check_password(self, username: str, password: str) -> bool:
+        """Checks if the provided password is correct for the given username."""
+        user = self.find_user_by_username(username)
+        if user and check_password_hash(user['password'], password):
+            return True
+        return False

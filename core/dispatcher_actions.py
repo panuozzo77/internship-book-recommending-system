@@ -4,20 +4,16 @@ import joblib
 from typing import Dict, Any, Optional
 
 from etl.loader import exec_all_etl
-from recommender.engine import ContentBasedRecommender, CollaborativeFilteringRecommender, PageCountReRanker, \
-    GenrePreferenceReRanker
-from recommender.facade import UserRecommenderFacade
-from recommender.model import ModelPersister
 from recommender.repository import UserInteractionRepository
 from recommender.taste_vector_calculator import TasteVectorCalculator
-from recommender.user_profile_index import UserProfileIndex
 from recommender.user_profile_repository import UserProfileRepository
-from recommender import config as recommender_config
+from recommender.model import ModelPersister
 from etl.MongoDBConnection import MongoDBConnection
 from webapp.runner import run_web_ui as web_ui
 from core.utils.LoggerManager import LoggerManager
 from core.PathRegistry import PathRegistry
 from core.utils.dataset_analyzer.schema_generator import process_all_json_in_directory
+from core.recommender_factory import initialize_recommender_facade
 
 logger_manager = LoggerManager()
 
@@ -56,54 +52,12 @@ def load_specific_etl(etl_name: str, app_config: Dict[str, Any], registry: PathR
 
 # --- Recommendation Actions ---
 
-def _initialize_recommender_facade() -> Optional[UserRecommenderFacade]:
-    """Initializes and returns the fully configured UserRecommenderFacade."""
-    logger = logger_manager.get_logger()
-    logger.info("Initializing recommendation components...")
-
-    path_registry = PathRegistry()
-    db_conn = MongoDBConnection()
-    persister = ModelPersister(path_registry)
-
-    model = persister.load(version="1.0")
-    if not model:
-        logger.critical("Book model could not be loaded. Please run the model build script first.")
-        return None
-
-    interaction_repo = UserInteractionRepository(db_conn)
-    user_profile_repo = UserProfileRepository(db_conn)
-
-    index_dir = path_registry.get_path(recommender_config.MODEL_ARTIFACTS_DIR_KEY)
-    if not index_dir:
-        logger.critical(f"Could not resolve path for '{recommender_config.MODEL_ARTIFACTS_DIR_KEY}'. Aborting.")
-        return None
-    user_index_path = os.path.join(index_dir, 'user_profile_index.faiss')
-    user_profile_index = UserProfileIndex(vector_size=model.vector_size, index_path=user_index_path)
-
-    rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
-    content_recommender = ContentBasedRecommender(model, rerankers=rerankers)
-    collaborative_recommender = CollaborativeFilteringRecommender(model, user_profile_index, rerankers=rerankers)
-    taste_vector_calculator = TasteVectorCalculator(model)
-
-    recommender_facade = UserRecommenderFacade(
-        content_recommender=content_recommender,
-        collaborative_recommender=collaborative_recommender,
-        interaction_repo=interaction_repo,
-        user_profile_repo=user_profile_repo,
-        taste_vector_calculator=taste_vector_calculator,
-        user_profile_index=user_profile_index
-    )
-    recommender_facade.load_indices()
-    logger.info("Recommendation components initialized successfully.")
-    return recommender_facade
-
-
 def recommend_by_titles(titles: list[str], top_n: int = 10) -> None:
     """Generate recommendations based on book titles."""
     logger = logger_manager.get_logger()
     logger.info(f"Generating recommendations for titles: {titles}")
 
-    facade = _initialize_recommender_facade()
+    facade = initialize_recommender_facade()
     if not facade or not facade.content_recommender:
         logger.error("Could not initialize recommender facade for title-based recommendation.")
         return
@@ -126,7 +80,7 @@ def recommend_for_user_id_content_based(user_id: str, top_n: int = 10) -> None:
     logger = logger_manager.get_logger()
     logger.info(f"Generating content-based recommendations for user: {user_id}")
 
-    facade = _initialize_recommender_facade()
+    facade = initialize_recommender_facade()
     if not facade:
         return
 
@@ -144,7 +98,7 @@ def recommend_for_user_id_collaborative(user_id: str, top_n: int = 10) -> None:
     logger = logger_manager.get_logger()
     logger.info(f"Generating collaborative filtering recommendations for user: {user_id}")
 
-    facade = _initialize_recommender_facade()
+    facade = initialize_recommender_facade()
     if not facade:
         return
 
