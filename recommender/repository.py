@@ -245,3 +245,4 @@ class UserRepository:
         if user and check_password_hash(user['password'], password):
             return True
         return False
+    

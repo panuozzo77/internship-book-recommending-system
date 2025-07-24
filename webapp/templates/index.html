@@ -11,33 +11,35 @@
     {% if books %}
         <div class="list-group">
             {% for book in books %}
-                <div class="list-group-item list-group-item-action flex-column align-items-start mb-3">
-                    <form action="{{ url_for('update_book', book_obj_id=book._id) }}" method="post">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">{{ book.book_title }}</h5>
-                            <small>Ultimo aggiornamento: {{ book.last_updated.strftime('%d-%m-%Y %H:%M') }}</small>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">La tua valutazione:</label>
-                            <div class="star-rating">
-                                {% for i in range(5, 0, -1) %}
-                                    <input type="radio" id="star-{{ book._id }}-{{ i }}" name="rating" value="{{ i }}" {% if book.rating == i %}checked{% endif %}>
-                                    <label for="star-{{ book._id }}-{{ i }}">★</label>
-                                {% endfor %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <form action="{{ url_for('update_book', book_obj_id=book._id) }}" method="post">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="card-title">{{ book.book_id }}</h5>
+                                <small>Ultimo aggiornamento: {{ book.date_updated.strftime('%d-%m-%Y %H:%M') }}</small>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="review-{{ book._id }}" class="form-label">La tua recensione:</label>
-                            <textarea class="form-control" id="review-{{ book._id }}" name="review_text" rows="3">{{ book.review_text }}</textarea>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-success btn-sm">Aggiorna</button>
-                    </form>
-                    <form action="{{ url_for('delete_book', book_obj_id=book._id) }}" method="post" class="d-inline float-end" onsubmit="return confirm('Sei sicuro di voler rimuovere questo libro?');">
-                        <button type="submit" class="btn btn-danger btn-sm">Rimuovi</button>
-                    </form>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">La tua valutazione:</label>
+                                <div class="star-rating">
+                                    {% for i in range(5, 0, -1) %}
+                                        <input type="radio" id="star-{{ book._id }}-{{ i }}" name="rating" value="{{ i }}" {% if book.rating == i %}checked{% endif %}>
+                                        <label for="star-{{ book._id }}-{{ i }}">★</label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+    
+                            <div class="mb-3">
+                                <label for="review-{{ book._id }}" class="form-label">La tua recensione:</label>
+                                <textarea class="form-control" id="review-{{ book._id }}" name="review_text" rows="3">{{ book.review_text }}</textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-sm">Aggiorna</button>
+                        </form>
+                        <form action="{{ url_for('delete_book', book_obj_id=book._id) }}" method="post" class="d-inline float-end" onsubmit="return confirm('Sei sicuro di voler rimuovere questo libro?');">
+                            <button type="submit" class="btn btn-danger btn-sm">Rimuovi</button>
+                        </form>
+                    </div>
                 </div>
             {% endfor %}
         </div>

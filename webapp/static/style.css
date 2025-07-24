@@ -1,0 +1,77 @@
+:root {
+    --primary: #2563eb;       /* Bright blue */
+    --secondary: #4f46e5;     /* Indigo */
+    --dark-bg: #1e293b;       /* Dark slate background */
+    --light-bg: #f8fafc;      /* Light background */
+    --danger: #dc2626;        /* Red */
+    --success: #16a34a;       /* Green */
+    --warning: #f59e0b;       /* Amber */
+    --light-text: #f8f9fa;    /* Light text */
+    --dark-text: #1f2937;     /* Dark text */
+}
+
+body {
+    background-color: var(--dark-bg);
+    color: var(--light-text);
+}
+
+.navbar {
+    background-color: var(--secondary) !important;
+}
+
+.navbar-brand {
+    color: var(--light-text) !important;
+}
+
+.nav-link {
+    color: var(--primary) !important;
+}
+
+.nav-link:hover {
+    color: var(--light-text) !important;
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+}
+
+.btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.alert-success {
+    background-color: var(--success);
+    color: var(--light-text);
+}
+
+.alert-danger {
+    background-color: var(--danger);
+    color: var(--light-text);
+}
+
+.alert-warning {
+    background-color: var(--warning);
+    color: var(--dark-text);
+}
+
+.card {
+    background-color: var(--secondary);
+    border-color: var(--primary);
+}
+
+.form-control {
+    background-color: #fff;
+    color: var(--dark-text);
+}

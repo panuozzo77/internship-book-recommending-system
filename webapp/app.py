@@ -1,15 +1,23 @@
 import os
 import re
+import uuid
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # --- Core Application Components ---
 from core.recommender_factory import initialize_recommender_facade
 from recommender.repository import UserRepository
 from etl.MongoDBConnection import MongoDBConnection
+from recommender.taste_vector_calculator import TasteVectorCalculator
+from recommender.user_profile_repository import UserProfileRepository
+from recommender.model import ModelPersister
+from core.PathRegistry import PathRegistry
+from recommender import config as recommender_config
+from recommender.user_profile_index import UserProfileIndex
+from werkzeug.security import generate_password_hash
 
 def create_app(app_config: Dict[str, Any]):
     """
@@ -21,9 +29,25 @@ def create_app(app_config: Dict[str, Any]):
     # --- APP CONFIGURATION ---
     webapp_config = app_config.get("webapp", {})
     app.config["SECRET_KEY"] = webapp_config.get("secret_key", "a-very-secret-key-that-should-be-changed")
-    
+
     # --- DATABASE & CORE COMPONENTS INITIALIZATION ---
+    db_conn = None
+    db = None
+    recommender_facade = None
+    user_profile_index = None
+    taste_vector_calculator = None
+    user_repo = None
+    user_profile_repo = None
+
     try:
+        # Initialize MongoDB Connection for the webapp
+        db_conn = MongoDBConnection()
+        db = db_conn.get_database()
+        app.logger.info(f"Successfully connected to MongoDB database: '{db.name}'")
+
+        # --- REPOSITORIES ---
+        user_repo = UserRepository(db_conn)
+
         # Initialize Recommender Facade
         recommender_facade = initialize_recommender_facade()
         if recommender_facade:
@@ -31,31 +55,52 @@ def create_app(app_config: Dict[str, Any]):
         else:
             app.logger.error("Failed to initialize UserRecommenderFacade.")
 
-        # Initialize MongoDB Connection for the webapp
-        db_conn = MongoDBConnection()
-        db = db_conn.get_database()
-        app.logger.info(f"Successfully connected to MongoDB database: '{db.name}'")
+        # Initialize User Profile Repository
+        user_profile_repo = UserProfileRepository(db_conn)
+
+        # Initialize Taste Vector Calculator
+        path_registry = PathRegistry()
+        persister = ModelPersister(path_registry)
+        model = persister.load(version="1.0")
+        if model:
+            taste_vector_calculator = TasteVectorCalculator(model)
+        else:
+            app.logger.error("Failed to load model, TasteVectorCalculator will not work")
+
+        # Initialize User Profile Index
+        index_dir = path_registry.get_path(recommender_config.MODEL_ARTIFACTS_DIR_KEY)
+        if not index_dir:
+            app.logger.error(f"Could not resolve path for '{recommender_config.MODEL_ARTIFACTS_DIR_KEY}'.")
+        else:
+            user_index_path = os.path.join(index_dir, 'user_profile_index.faiss')
+            user_profile_index = UserProfileIndex(vector_size=128, index_path=user_index_path)
 
     except Exception as e:
         app.logger.critical(f"A critical error occurred during app initialization: {e}", exc_info=True)
         db = None
         db_conn = None
         recommender_facade = None
+        user_profile_index = None
+        taste_vector_calculator = None
+        user_repo = None
+        user_profile_repo = None
         
-    # --- REPOSITORIES ---
-    user_repo = UserRepository(db_conn) if db_conn is not None else None
 
     # --- ROUTES ---
     
     @app.route('/')
     def index():
         """Main page showing the user's book list."""
+        username = session.get('user_id')
+        if not username:
+            return redirect(url_for('login'))
+
         if db is None:
             flash("Database connection not available.", "danger")
             return render_template('index.html', books=[])
-            
-        my_books_collection = db.my_books
-        user_books = list(my_books_collection.find().sort("last_updated", -1))
+
+        reviews_collection = db.reviews
+        user_books = list(reviews_collection.find({'user_id': username}).sort("last_updated", -1))
         return render_template('index.html', books=user_books)
 
     @app.route('/add', methods=['GET', 'POST'])
@@ -90,7 +135,7 @@ def create_app(app_config: Dict[str, Any]):
                     pipeline.extend([
                         {'$lookup': {
                             'from': 'authors',
-                            'localField': 'author_id.author_id',
+                            'localField': 'book_id.author_id',
                             'foreignField': 'author_id',
                             'as': 'author_details'
                         }},
@@ -126,29 +171,76 @@ def create_app(app_config: Dict[str, Any]):
             flash("Database connection not available.", "danger")
             return redirect(url_for('add_book'))
             
-        my_books_collection = db.my_books
+        reviews_collection = db.reviews
         book_id = request.form.get('book_id')
         book_title = request.form.get('book_title')
         rating_str = request.form.get('rating')
         review_text = request.form.get('review_text')
+        username = session.get('user_id')
 
         if not all([book_id, book_title, rating_str]):
             flash("Missing data. Please fill out all fields.", "danger")
             return redirect(url_for('add_book'))
 
-        if my_books_collection.find_one({'book_id': book_id}):
+        if reviews_collection.find_one({'book_id': book_id, 'user_id': username}):
             flash(f"'{book_title}' is already in your list!", "warning")
             return redirect(url_for('add_book'))
 
-        my_books_collection.insert_one({
+        now = datetime.utcnow()
+        reviews_collection.insert_one({
+            'review_id': uuid.uuid4().hex,
             'book_id': book_id,
-            'book_title': book_title,
+            'user_id': username,
             'rating': int(rating_str) if rating_str else 0,
             'review_text': review_text,
-            'last_updated': datetime.utcnow()
+            'date_added': now,
+            'date_updated': now,
+            'read_at': None,
+            'started_at': None,
+            'n_votes': 0,
+            'n_comments': 0
         })
         
         flash(f"'{book_title}' added to your list!", "success")
+
+        # --- UPDATE USER PROFILE (IN BACKGROUND) ---
+        if username and taste_vector_calculator and user_profile_repo and user_profile_index and db_conn:
+            def update_profile_and_index_task(app_context, username, db_conn, taste_vector_calculator, user_profile_repo, user_profile_index):
+                with app_context:
+                    try:
+                        from recommender.repository import UserInteractionRepository
+                        interaction_repo = UserInteractionRepository(db_conn)
+                        user_history_df = interaction_repo.find_interactions_by_user(username)
+
+                        if not user_history_df.empty:
+                            profile_vector = taste_vector_calculator.calculate(user_history_df)
+                            if profile_vector is not None:
+                                user_profile_repo.save_or_update(username, profile_vector)
+                                app.logger.info(f"Successfully updated profile for user '{username}'.")
+
+                                all_profiles = user_profile_repo.get_all_profiles_except(user_id_to_exclude=None)
+                                if all_profiles:
+                                    profiles_for_indexing = [
+                                        {'user_id': i, 'taste_vector': profile['taste_vector']}
+                                        for i, profile in enumerate(all_profiles)
+                                    ]
+                                    if user_profile_index:
+                                        user_profile_index.build(profiles_for_indexing)
+                                        user_profile_index.save()
+                                        app.logger.info(f"Successfully rebuilt user profile index for user {username}")
+                                else:
+                                    app.logger.warning("No user profiles found to rebuild index.")
+                            else:
+                                app.logger.warning(f"Could not calculate profile for user '{username}'.")
+                        else:
+                            app.logger.warning(f"No interaction history for user '{username}'.")
+                    except Exception as e:
+                        app.logger.error(f"Error in background profile update: {e}", exc_info=True)
+
+            import threading
+            thread = threading.Thread(target=update_profile_and_index_task, args=(app.app_context(), username, db_conn, taste_vector_calculator, user_profile_repo, user_profile_index))
+            thread.start()
+
         return redirect(url_for('index'))
 
     @app.route('/update/<book_obj_id>', methods=['POST'])
@@ -158,7 +250,7 @@ def create_app(app_config: Dict[str, Any]):
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
             
-        my_books_collection = db.my_books
+        reviews_collection = db.reviews
         rating_str = request.form.get('rating')
         review_text = request.form.get('review_text')
         
@@ -166,12 +258,12 @@ def create_app(app_config: Dict[str, Any]):
             flash("Rating is required.", "danger")
             return redirect(url_for('index'))
 
-        my_books_collection.update_one(
+        reviews_collection.update_one(
             {'_id': ObjectId(book_obj_id)},
             {'$set': {
                 'rating': int(rating_str) if rating_str else 0,
                 'review_text': review_text,
-                'last_updated': datetime.utcnow()
+                'date_updated': datetime.utcnow()
             }}
         )
         flash("Book updated successfully!", "success")
@@ -184,8 +276,8 @@ def create_app(app_config: Dict[str, Any]):
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
             
-        my_books_collection = db.my_books
-        my_books_collection.delete_one({'_id': ObjectId(book_obj_id)})
+        reviews_collection = db.reviews
+        reviews_collection.delete_one({'_id': ObjectId(book_obj_id)})
         flash("Book removed from list.", "success")
         return redirect(url_for('index'))
 
@@ -202,20 +294,15 @@ def create_app(app_config: Dict[str, Any]):
                 flash("User repository not available.", "danger")
                 return redirect(url_for('register'))
 
-            if user_repo.create_user(username, password):
+            user_id = user_repo.create_user(username, password)
+            if user_id:
                 flash('Registration successful. Please log in.')
                 return redirect(url_for('login'))
             else:
                 flash('Username already exists.')
-                return redirect(url_for('register'))
+                return render_template('register.html', flash_messages=dict(session.pop('_flashes', []) or []))
 
-        return '''
-            <form method="post">
-                Username: <input type="text" name="username"><br>
-                Password: <input type="password" name="password"><br>
-                <input type="submit" value="Register">
-            </form>
-        '''
+        return render_template('register.html', flash_messages=dict(session.pop('_flashes', []) or []))
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -228,24 +315,17 @@ def create_app(app_config: Dict[str, Any]):
                 flash("User repository not available.", "danger")
                 return redirect(url_for('login'))
 
-            if user_repo.check_password(username, password):
-                user = user_repo.find_user_by_username(username)
-                if user:
-                    session['user_id'] = str(user['_id'])
-                    session['username'] = user['username']
-                    flash('You were successfully logged in.')
-                    return redirect(url_for('index'))
+            user = user_repo.find_user_by_username(username)
+            if user and user_repo.check_password(username, password):
+                session['user_id'] = str(user['_id'])
+                session['username'] = user['username']
+                flash('You were successfully logged in.')
+                return redirect(url_for('index'))
             else:
                 flash('Invalid username or password.')
-                return redirect(url_for('login'))
+                return render_template('login.html', flash_messages=dict(session.pop('_flashes', []) or []))
 
-        return '''
-            <form method="post">
-                Username: <input type="text" name="username"><br>
-                Password: <input type="password" name="password"><br>
-                <input type="submit" value="Login">
-            </form>
-        '''
+        return render_template('login.html', flash_messages=dict(session.pop('_flashes', []) or []))
 
     @app.route('/logout')
     def logout():
@@ -260,14 +340,14 @@ def create_app(app_config: Dict[str, Any]):
     @app.route('/api/recommendations')
     def api_recommendations():
         """API endpoint to get recommendations for the logged-in user."""
-        if 'user_id' not in session:
+        username = session.get('user_id')
+        if not username:
             return jsonify({"error": "User not logged in"}), 401
 
         if not recommender_facade:
             return jsonify({"error": "Recommendation engine not available"}), 503
 
-        user_id = session['user_id']
-        recommendations = recommender_facade.recommend_with_content_based(user_id, top_n=10)
+        recommendations = recommender_facade.recommend_with_content_based(username, top_n=10)
         
         return jsonify(recommendations)
 

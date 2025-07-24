@@ -122,14 +122,21 @@ class UserProfileIndex:
         return neighbors
 
     def save(self):
-        """Saves the current index to the specified file path."""
+        """Saves the current index and the ID map to their respective file paths."""
         if self.index is None:
             self.logger.error("Cannot save an uninitialized index.")
             return
-            
+
+        import joblib
         os.makedirs(os.path.dirname(self.index_path), exist_ok=True)
+        
+        # Save the FAISS index
         faiss.write_index(self.index, self.index_path)
         self.logger.info(f"FAISS index saved successfully to {self.index_path}")
+        
+        # Save the integer-to-string ID map
+        joblib.dump(self.int_to_str_id_map, self.map_path)
+        self.logger.info(f"ID map saved successfully to {self.map_path}")
 
     def load(self):
         """Loads an index and its corresponding ID map from the specified file paths."""
@@ -142,4 +149,5 @@ class UserProfileIndex:
         self.int_to_str_id_map = joblib.load(self.map_path)
         self.str_to_int_id_map = {v: k for k, v in self.int_to_str_id_map.items()} # Create reverse map
         
-        self.logger.info(f"FAISS index and ID map loaded successfully. Total vectors: {self.index.ntotal}")
+        if self.index:
+            self.logger.info(f"FAISS index and ID map loaded successfully. Total vectors: {self.index.ntotal}")

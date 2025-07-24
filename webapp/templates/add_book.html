@@ -17,32 +17,34 @@
         <h2>Risultati della Ricerca</h2>
         <div class="list-group">
             {% for result in search_results %}
-                <div class="list-group-item mb-3">
-                    <h5>{{ result.book_title }}</h5>
-                    <p class="mb-1 text-muted small">{{ result.description[:250] }}...</p>
-                    
-                    <hr>
-
-                    <form action="{{ url_for('save_book') }}" method="post">
-                        <input type="hidden" name="book_id" value="{{ result.book_id }}">
-                        <input type="hidden" name="book_title" value="{{ result.book_title }}">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ result.book_title }}</h5>
+                        <p class="card-text text-muted small">{{ result.description[:250] }}...</p>
                         
-                        <div class="mb-3">
-                            <label class="form-label">Valutazione (da 1 a 5):</label>
-                             <div class="star-rating">
-                                {% for i in range(5, 0, -1) %}
-                                    <input type="radio" id="new-star-{{ result._id }}-{{ i }}" name="rating" value="{{ i }}" required>
-                                    <label for="new-star-{{ result._id }}-{{ i }}">★</label>
-                                {% endfor %}
+                        <hr>
+    
+                        <form action="{{ url_for('save_book') }}" method="post">
+                            <input type="hidden" name="book_id" value="{{ result.book_id }}">
+                            <input type="hidden" name="book_title" value="{{ result.book_title }}">
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Valutazione (da 1 a 5):</label>
+                                 <div class="star-rating">
+                                    {% for i in range(5, 0, -1) %}
+                                        <input type="radio" id="new-star-{{ result._id }}-{{ i }}" name="rating" value="{{ i }}" required>
+                                        <label for="new-star-{{ result._id }}-{{ i }}">★</label>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="review-{{ result._id }}" class="form-label">Recensione (opzionale):</label>
-                            <textarea class="form-control" id="review-{{ result._id }}" name="review_text" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success">Aggiungi alla mia lista</button>
-                    </form>
+    
+                            <div class="mb-3">
+                                <label for="review-{{ result._id }}" class="form-label">Recensione (opzionale):</label>
+                                <textarea class="form-control" id="review-{{ result._id }}" name="review_text" rows="2"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Aggiungi alla mia lista</button>
+                        </form>
+                    </div>
                 </div>
             {% endfor %}
         </div>
