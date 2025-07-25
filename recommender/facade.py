@@ -76,7 +76,8 @@ class UserRecommenderFacade:
             exclude_indices=read_indices,
             rerank_context=rerank_context,
             top_n=top_n,
-            num_neighbors=config.COLLABORATIVE_N_NEIGHBORS
+            num_neighbors=config.COLLABORATIVE_N_NEIGHBORS,
+            user_id=user_id
         )
 
     def _get_or_create_user_profile(self, user_id: Any) -> Optional[np.ndarray]:
@@ -132,6 +133,8 @@ class UserRecommenderFacade:
             rating = getattr(row, 'rating', 0.0)
             page_count = getattr(row, 'page_count', None)
 
+            if title is None:
+                continue
             book_idx = self.model.title_to_idx.get(title)
             if book_idx is None:
                 continue

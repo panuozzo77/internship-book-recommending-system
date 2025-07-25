@@ -100,20 +100,12 @@ def populate_profiles_and_build_index():
     user_index_path = os.path.join(index_dir, 'user_profile_index.faiss')
     user_profile_index = UserProfileIndex(vector_size=model.vector_size, index_path=user_index_path)
 
-    # Create the integer ID to string ID mapping
-    int_id_to_str_id_map = {i: profile['user_id'] for i, profile in enumerate(all_profiles)}
+    # The .build() method now handles the creation of integer IDs and the mapping internally.
+    # We just need to pass the raw profiles from the database.
+    user_profile_index.build(all_profiles)
     
-    profiles_for_indexing = [
-        {'user_id': i, 'taste_vector': profile['taste_vector']}
-        for i, profile in enumerate(all_profiles)
-    ]
-
-    user_profile_index.build(profiles_for_indexing)
+    # The .save() method now saves both the FAISS index and the correctly generated ID map.
     user_profile_index.save()
-    
-    map_path = user_index_path.replace('.faiss', '_id_map.joblib')
-    joblib.dump(int_id_to_str_id_map, map_path)
-    logger.info(f"User ID map saved successfully to {map_path}")
     
     logger.info("--- Full Process Complete ---")
 

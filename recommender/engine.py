@@ -1,5 +1,5 @@
 # recommender/engine.py
-from typing import List, Protocol, Tuple, Set, Dict
+from typing import List, Protocol, Tuple, Set, Dict, Optional
 import numpy as np
 import pandas as pd
 
@@ -97,7 +97,7 @@ class ContentBasedRecommender:
     Genera raccomandazioni usando un modello pre-addestrato.
     È leggera e non ha dipendenze da I/O.
     """
-    def __init__(self, model: RecommenderModel, rerankers: List[ReRanker] = None):
+    def __init__(self, model: RecommenderModel, rerankers: Optional[List[ReRanker]] = None):
         if not isinstance(model, RecommenderModel):
             raise TypeError("model must be an instance of RecommenderModel")
         
@@ -131,7 +131,7 @@ class ContentBasedRecommender:
         profile_vector: np.ndarray, 
         exclude_indices: Set[int], 
         top_n: int = 10,
-        rerank_context: dict = None
+        rerank_context: Optional[dict] = None
     ) -> List[str]:
         """
         Trova i libri più simili a un profilo vettoriale, applicando filtri e re-ranking.
@@ -176,7 +176,7 @@ class CollaborativeFilteringRecommender:
         self, 
         model: RecommenderModel, 
         user_profile_index: UserProfileIndex,
-        rerankers: List[ReRanker] = None
+        rerankers: Optional[List[ReRanker]] = None
     ):
         """
         Initializes the recommender.
@@ -201,13 +201,18 @@ class CollaborativeFilteringRecommender:
         exclude_indices: Set[int],
         rerank_context: dict,
         top_n: int = 10,
-        num_neighbors: int = 15
+        num_neighbors: int = 15,
+        user_id: Optional[str] = None
     ) -> List[str]:
         """
         Generates a list of recommended books based on the preferences of a user's neighbors.
         """
         # 1. Find nearest neighbors using the FAISS index
-        top_neighbors = self.user_profile_index.search(target_user_vector, k=num_neighbors)
+        top_neighbors = self.user_profile_index.search(
+            target_user_vector,
+            k=num_neighbors,
+            user_id_to_exclude=user_id
+        )
         if not top_neighbors:
             self.logger.warning("Could not find any similar users in the FAISS index.")
             return []

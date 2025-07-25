@@ -24,7 +24,7 @@ class UserProfileIndex:
         self.logger = LoggerManager().get_logger()
         self.map_path = self.index_path.replace('.faiss', '_id_map.joblib')
         
-        self.index: Optional[faiss.IndexIDMap2] = None
+        self.index: Optional[faiss.IndexIDMap] = None
         # This dictionary will hold the mapping from FAISS's integer IDs back to your original string user_ids
         self.int_to_str_id_map: dict[int, str] = {}
         # This dictionary will hold the reverse mapping, which is needed for adding new users
@@ -32,32 +32,37 @@ class UserProfileIndex:
 
     def build(self, user_profiles: List[dict]):
         """
-        Builds a new FAISS index from a list of user profiles.
+        Builds a new FAISS index from a list of user profiles. It creates a consistent
+        integer ID mapping to handle various user ID formats (str, int).
 
         Args:
-            user_profiles: A list of dictionaries, where each dictionary must
-                           contain 'user_id' (int) and 'taste_vector' (np.ndarray).
+            user_profiles: A list of dictionaries, where each must contain
+                           'user_id' and 'taste_vector'.
         """
+        self.logger.info(f"Building new FAISS index with {len(user_profiles)} user profiles...")
+        
+        core_index = faiss.IndexFlatL2(self.vector_size)
+        self.index = faiss.IndexIDMap(core_index)
+        self.int_to_str_id_map.clear()
+        self.str_to_int_id_map.clear()
+
         if not user_profiles:
             self.logger.warning("Cannot build index from an empty list of profiles.")
             return
 
-        self.logger.info(f"Building new FAISS index with {len(user_profiles)} user profiles...")
-        
-        # The core index for our vectors. IndexFlatL2 performs an exact search.
-        # For massive datasets, one might use a faster, approximate index like IndexIVFFlat.
-        core_index = faiss.IndexFlatL2(self.vector_size)
-        self.index = faiss.IndexIDMap2(core_index)
-        
-        # Extract vectors and IDs into separate NumPy arrays for batch processing
+        # Prepare data and create consistent integer IDs
         vectors = np.array([p['taste_vector'] for p in user_profiles], dtype=np.float32)
-        user_ids = np.array([p['user_id'] for p in user_profiles], dtype=np.int64)
+        str_user_ids = [str(p['user_id']) for p in user_profiles]
+        
+        int_ids = np.arange(len(user_profiles), dtype=np.int64)
+        self.int_to_str_id_map = {int(k): v for k, v in zip(int_ids, str_user_ids)}
+        self.str_to_int_id_map = {v: k for k, v in self.int_to_str_id_map.items()}
 
-        # FAISS requires normalized vectors for efficient L2 -> cosine similarity search
+        # Normalize vectors for cosine similarity search
         faiss.normalize_L2(vectors)
         
-        # Add the vectors and their corresponding user_ids to the index
-        self.index.add_with_ids(vectors, user_ids)
+        # Add vectors with their new, consistent integer IDs
+        self.index.add_with_ids(vectors, int_ids)
         
         self.logger.info(f"FAISS index built successfully. Total vectors in index: {self.index.ntotal}")
 
@@ -84,42 +89,50 @@ class UserProfileIndex:
         self.index.add_with_ids(vector, user_id_np)
         self.logger.info(f"Successfully added user_id {user_id} to the live FAISS index.")
 
-    def search(self, vector: np.ndarray, k: int) -> Optional[List[Tuple[int, float]]]:
+    def search(self, vector: np.ndarray, k: int, user_id_to_exclude: Optional[str] = None) -> List[Tuple[str, float]]:
         """
-        Searches the index for the k nearest neighbors to a given vector.
+        Searches for the k nearest neighbors, optionally excluding the query user.
 
         Args:
-            vector: The query vector (the user seeking recommendations).
+            vector: The query vector.
             k: The number of neighbors to find.
+            user_id_to_exclude: The string ID of the user to exclude from results.
 
         Returns:
-            A list of (user_id, distance) tuples, or None if the search fails.
+            A list of (user_id, similarity) tuples.
         """
-        if self.index is None:
-            self.logger.error("Cannot search an uninitialized index.")
-            return None
+        if self.index is None or self.index.ntotal == 0:
+            self.logger.error("Cannot search an uninitialized or empty index.")
+            return []
 
-        # Reshape and normalize the query vector
+        # To exclude the user, we search for k+10 neighbors and filter.
+        # This provides a larger buffer to ensure we get k results after exclusion.
+        num_to_fetch = k + 10 if user_id_to_exclude is not None else k
+        
+        # Ensure k is not greater than the number of items in the index
+        if num_to_fetch > self.index.ntotal:
+            num_to_fetch = self.index.ntotal
+
         vector = vector.astype(np.float32).reshape(1, -1)
         faiss.normalize_L2(vector)
         
-        # The search returns distances and the corresponding integer IDs
-        distances, int_ids = self.index.search(vector, k)
+        distances, int_ids = self.index.search(vector, num_to_fetch)
         
-        # The results are in NumPy arrays, so we process them into a list of tuples
         neighbors = []
+        str_user_id_to_exclude = str(user_id_to_exclude) if user_id_to_exclude else None
+
         for i, int_id in enumerate(int_ids[0]):
-            # -1 indicates that no neighbor was found (if k > ntotal)
-            if int_id != -1:
-                # Convert the internal integer ID back to the original string user_id
-                str_user_id = self.int_to_str_id_map.get(int_id)
-                if str_user_id:
-                    # The distance is L2, but on normalized vectors, it can be converted
-                    # to cosine similarity: sim = 1 - (dist^2 / 2)
-                    similarity = 1 - (distances[0][i]**2) / 2
-                    neighbors.append((str_user_id, similarity))
+            if int_id == -1:
+                continue
+
+            str_user_id = self.int_to_str_id_map.get(int_id)
+            
+            # Exclude the target user and ensure the ID mapping exists
+            if str_user_id and str_user_id != str_user_id_to_exclude:
+                similarity = 1 - (distances[0][i]**2) / 2
+                neighbors.append((str_user_id, similarity))
                 
-        return neighbors
+        return neighbors[:k]
 
     def save(self):
         """Saves the current index and the ID map to their respective file paths."""
