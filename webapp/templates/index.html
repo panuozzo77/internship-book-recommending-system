@@ -15,7 +15,13 @@
                     <div class="card-body">
                         <form action="{{ url_for('update_book', book_obj_id=book._id) }}" method="post">
                             <div class="d-flex w-100 justify-content-between">
-                                <h5 class="card-title">{{ book.book_id }}</h5>
+                                <h5 class="card-title">{{ book.book_details.book_title }}</h5>
+                                <p class="card-subtitle mb-2 text-muted">
+                                    by {{ book.book_details.author_names | join(', ') }}
+                                    {% if book.book_details.series_names %}
+                                        - {{ book.book_details.series_names | join(', ') }}
+                                    {% endif %}
+                                </p>
                                 <small>Ultimo aggiornamento: {{ book.date_updated.strftime('%d-%m-%Y %H:%M') }}</small>
                             </div>
                             
@@ -81,8 +87,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         let html = '<ul class="list-group">';
                         data.forEach(rec => {
-                            html += `<li class="list-group-item">${rec}</li>`;
-                        });
+                           html += `<li class="list-group-item">
+                                       <strong>${rec.book_title}</strong>
+                                       <br>
+                                       <small class="text-muted">by ${rec.author_names.join(', ')}</small>
+                                       ${rec.series_names ? `<br><small class="text-muted">${rec.series_names.join(', ')}</small>` : ''}
+                                    </li>`;
+                       });
                         html += '</ul>';
                         recommendationsOutput.innerHTML = html;
                     }

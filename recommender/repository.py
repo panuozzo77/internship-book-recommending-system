@@ -111,10 +111,54 @@ class BookRepository:
         ]
         
         cursor = self.db['books'].aggregate(pipeline)
-        top_shelves = {doc['_id'] for doc in cursor}
+        top_shelves = {doc['_id'] for doc in cursor} if cursor else set()
         self.logger.info(f"Found {len(top_shelves)} unique top shelves.")
         return top_shelves
     
+    def get_book_details_by_id(self, book_id: str) -> Optional[dict]:
+        """
+        Retrieves detailed information for a single book, including author and series.
+        """
+        self.logger.info(f"Fetching details for book_id '{book_id}'...")
+        pipeline = [
+            {'$match': {'book_id': book_id}},
+            {
+                '$lookup': {
+                    'from': 'authors',
+                    'localField': 'author_id.author_id',
+                    'foreignField': 'author_id',
+                    'as': 'author_details'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'series',
+                    'localField': 'series.series_id',
+                    'foreignField': 'series_id',
+                    'as': 'series_details'
+                }
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'book_id': 1,
+                    'book_title': 1,
+                    'description': 1,
+                    'author_names': '$author_details.name',
+                    'series_names': '$series_details.name'
+                }
+            }
+        ]
+        
+        cursor = self.db['books'].aggregate(pipeline)
+        result = list(cursor)
+        
+        if not result:
+            self.logger.warning(f"No details found for book_id '{book_id}'.")
+            return None
+            
+        return result[0]
+
 class UserInteractionRepository:
     """
     Responsabile del caricamento dei dati di interazione utente-libro da MongoDB.

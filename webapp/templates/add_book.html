@@ -19,7 +19,13 @@
             {% for result in search_results %}
                 <div class="card mb-3">
                     <div class="card-body">
-                        <h5 class="card-title">{{ result.book_title }}</h5>
+                        <h5 class="card-title">{{ result.book_details.book_title }}</h5>
+                        <p class="card-subtitle mb-2 text-muted">
+                            by {{ result.book_details.author_names | join(', ') }}
+                            {% if result.book_details.series_names %}
+                                - {{ result.book_details.series_names | join(', ') }}
+                            {% endif %}
+                        </p>
                         <p class="card-text text-muted small">{{ result.description[:250] }}...</p>
                         
                         <hr>
