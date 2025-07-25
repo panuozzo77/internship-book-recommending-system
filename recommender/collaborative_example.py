@@ -1,6 +1,6 @@
 # recommender/collaborative_example.py
 import os
-from recommender.repository import UserInteractionRepository
+from recommender.repository import UserInteractionRepository, BookRepository
 from recommender.user_profile_repository import UserProfileRepository
 from recommender.facade import UserRecommenderFacade
 from recommender.model import ModelPersister
@@ -43,6 +43,7 @@ def run_full_recommendation_showcase(user_id: str):
     # Repositories
     interaction_repo = UserInteractionRepository(db_conn)
     user_profile_repo = UserProfileRepository(db_conn)
+    book_repo = BookRepository(db_conn)
 
     # FAISS Index for User Profiles
     index_dir = path_registry.get_path(config.MODEL_ARTIFACTS_DIR_KEY)
@@ -86,7 +87,14 @@ def run_full_recommendation_showcase(user_id: str):
     if content_based_recs:
         print("Top 5 Content-Based Recommendations:")
         for i, title in enumerate(content_based_recs, 1):
-            print(f"  {i}. {title}")
+            book_id = book_repo.get_book_id_by_title(title)
+            book = book_repo.get_book_details_by_id(book_id)
+            if book:
+                series_names = book.get('series_names', 'N/A')
+                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names})")
+            else:
+                print(f"  {i}. [Book details not found]")
+            #print(f"  {i}. {title} (ID: {book})")
     else:
         print("Could not generate content-based recommendations.")
 
@@ -96,7 +104,13 @@ def run_full_recommendation_showcase(user_id: str):
     if collaborative_recs:
         print("Top 5 Collaborative Filtering Recommendations:")
         for i, title in enumerate(collaborative_recs, 1):
-            print(f"  {i}. {title}")
+            book_id = book_repo.get_book_id_by_title(title)
+            book = book_repo.get_book_details_by_id(book_id)
+            if book:
+                series_names = book.get('series_names', 'N/A')
+                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names})")
+            else:
+                print(f"  {i}. [Book details not found]")
     else:
         print("Could not generate collaborative filtering recommendations.")
     
@@ -107,6 +121,7 @@ if __name__ == "__main__":
     PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config.json')
     PathRegistry().set_path('processed_datasets_dir', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/recommendation')
     
-    TEST_USER_ID = 'cristian'
+    #TEST_USER_ID = 'cristian'
+    TEST_USER_ID = '8842281e1d1347389f2ab93d60773d4d'
     
     run_full_recommendation_showcase(TEST_USER_ID)

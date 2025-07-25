@@ -385,7 +385,7 @@ def create_app(app_config: Dict[str, Any]):
         if recommendations:
             book_repo = BookRepository(g.db_conn)
             for rec in recommendations:
-                book_details = book_repo.get_book_details_by_id(rec)
+                book_details = book_repo.get_book_details_by_id(str(rec))
                 if book_details:
                     enriched_recommendations.append(book_details)
 

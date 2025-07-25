@@ -158,6 +158,21 @@ class BookRepository:
             return None
             
         return result[0]
+    
+    def get_book_id_by_title(self, book_title: str) -> Optional[str]:
+        """
+        Retrieves the book_id for a given book_title.
+        """
+        self.logger.info(f"Fetching book_id for title '{book_title}'...")
+        result = self.db[self.collection_name].find_one(
+            {'book_title': book_title},
+            {'_id': 0, 'book_id': 1}
+        )
+        if result and 'book_id' in result:
+            return result['book_id']
+        
+        self.logger.warning(f"No book found with title '{book_title}'.")
+        return None
 
 class UserInteractionRepository:
     """
