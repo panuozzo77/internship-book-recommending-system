@@ -183,58 +183,55 @@ def create_app(app_config: Dict[str, Any]):
             flash("Database connection not available.", "danger")
             return render_template('add_book.html', search_results=[], previous_query="")
 
+        books_collection = db.books
         search_results = []
         query = ""
-        books_collection = db.books
 
         if request.method == 'POST':
             query = request.form.get('query', '').strip()
-            
             if query:
                 author_query = None
                 book_title_query = query
-                author_pattern = r'\{(.*?)\}'
-                match = re.search(author_pattern, query)
 
+                # Estrai {autore} dal titolo se presente
+                match = re.search(r'\{(.*?)\}', query)
                 if match:
                     author_query = match.group(1).strip()
-                    book_title_query = re.sub(author_pattern, '', query).strip()
-                
+                    book_title_query = re.sub(r'\{.*?\}', '', query).strip()
+
                 if author_query:
+                    # Ricerca combinata o solo autore
                     pipeline = []
+
                     if book_title_query:
                         pipeline.append({'$match': {'$text': {'$search': book_title_query}}})
-                    
+                        pipeline.append({'$addFields': {'score': {'$meta': 'textScore'}}})
+
                     pipeline.extend([
                         {'$lookup': {
                             'from': 'authors',
-                            'localField': 'book_id.author_id',
+                            'localField': 'author_id.author_id',
                             'foreignField': 'author_id',
                             'as': 'author_details'
                         }},
+                        {'$unwind': '$author_details'},
                         {'$match': {
-                            'author_details.name': {'$regex': author_query, '$options': 'i'},
-                            'author_details': {'$ne': []}
-                        }}
+                            'author_details.name': {'$regex': author_query, '$options': 'i'}
+                        }},
+                        {'$sort': {'score': -1} if book_title_query else {'book_title': 1}},
+                        {'$limit': 20}
                     ])
-                    
-                    if book_title_query:
-                        pipeline.extend([
-                            {'$addFields': {'score': {'$meta': 'textScore'}}},
-                            {'$sort': {'score': -1}}
-                        ])
-                    else:
-                        pipeline.append({'$sort': {'book_title': 1}})
-                    
-                    pipeline.append({'$limit': 20})
+
                     search_results = list(books_collection.aggregate(pipeline))
 
                 elif book_title_query:
+                    # Solo titolo
                     search_results = list(books_collection.find(
                         {'$text': {'$search': book_title_query}},
                         {'score': {'$meta': 'textScore'}}
                     ).sort([('score', {'$meta': 'textScore'})]).limit(20))
-        
+
+        # Arricchimento con BookRepository
         enriched_results = []
         if search_results:
             book_repo = BookRepository(g.db_conn)
@@ -243,7 +240,6 @@ def create_app(app_config: Dict[str, Any]):
                 if book_details:
                     book['book_details'] = book_details
                 else:
-                    # Provide fallback data for missing books in search results
                     book['book_details'] = {
                         'book_id': book['book_id'],
                         'book_title': book.get('book_title', f"[Libro non trovato - ID: {book['book_id']}]"),
@@ -255,6 +251,7 @@ def create_app(app_config: Dict[str, Any]):
                 enriched_results.append(book)
 
         return render_template('add_book.html', search_results=enriched_results, previous_query=query)
+
 
     @app.route('/save', methods=['POST'])
     def save_book():
