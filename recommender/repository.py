@@ -1,4 +1,5 @@
 # recommender/repository.py
+import re
 import pandas as pd
 from typing import Any, List, Set, Optional
 from etl.MongoDBConnection import MongoDBConnection
@@ -189,8 +190,11 @@ class BookRepository:
         if not result:
             self.logger.warning(f"No details found for book_id '{book_id}'.")
             return None
-            
-        return result[0]
+        
+        book = result[0]
+        book['book_title'] = re.sub(r'\s*\([^)]*#\d+[^)]*\)\s*$', '', book['book_title']).strip()
+
+        return book
     
     def get_book_id_by_title(self, book_title: str) -> Optional[str]:
         """

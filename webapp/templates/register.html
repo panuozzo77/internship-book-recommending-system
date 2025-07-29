@@ -1,34 +1,362 @@
 {% extends "layout.html" %}
 
-{% block title %}Register{% endblock %}
+{% block title %}📝 Registrati - Book Profiler{% endblock %}
 
 {% block content %}
-  <div class="container">
+<div class="auth-container">
     <div class="row justify-content-center">
-      <div class="col-md-6 card p-4">
-        <h2 class="card-title text-center">Register</h2>
-        {% if flash_messages %}
-          {% for category, message in flash_messages %}
-            <div class="alert alert-{{ category }}">
-              {{ message }}
+        <div class="col-md-6 col-lg-5 col-xl-4">
+            <div class="auth-card card shadow-lg">
+                <div class="card-body p-5">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <div class="auth-icon mb-3">
+                            <i class="bi bi-person-plus-fill"></i>
+                        </div>
+                        <h2 class="card-title mb-2">Crea il tuo account</h2>
+                        <p class="text-muted">Unisciti alla community di lettori</p>
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% if flash_messages %}
+                        <div class="mb-4">
+                            {% for category, message in flash_messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                                    <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }}-fill me-2"></i>
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Registration Form -->
+                    <form method="post" class="auth-form">
+                        <div class="mb-4">
+                            <label for="username" class="form-label fw-semibold">
+                                <i class="bi bi-person-fill me-1"></i>
+                                Username
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    class="form-control form-control-lg" 
+                                    id="username" 
+                                    name="username" 
+                                    placeholder="Scegli un username univoco"
+                                    required 
+                                    autocomplete="username"
+                                    minlength="3"
+                                    maxlength="20"
+                                >
+                            </div>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Minimo 3 caratteri, massimo 20
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-semibold">
+                                <i class="bi bi-lock-fill me-1"></i>
+                                Password
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control form-control-lg" 
+                                    id="password" 
+                                    name="password" 
+                                    placeholder="Crea una password sicura"
+                                    required 
+                                    autocomplete="new-password"
+                                    minlength="6"
+                                >
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="bi bi-shield-check me-1"></i>
+                                Minimo 6 caratteri per la sicurezza
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="confirmPassword" class="form-label fw-semibold">
+                                <i class="bi bi-lock-fill me-1"></i>
+                                Conferma Password
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <input 
+                                    type="password" 
+                                    class="form-control form-control-lg" 
+                                    id="confirmPassword" 
+                                    name="confirmPassword" 
+                                    placeholder="Ripeti la password"
+                                    required 
+                                    autocomplete="new-password"
+                                >
+                                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                    <i class="bi bi-eye" id="toggleConfirmIcon"></i>
+                                </button>
+                            </div>
+                            <div id="passwordMatch" class="form-text"></div>
+                        </div>
+
+                        <!-- Terms checkbox -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                <label class="form-check-label" for="agreeTerms">
+                                    <small>
+                                        Accetto i termini di servizio e la privacy policy di Book Profiler
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-4">
+                            <button type="submit" class="btn btn-primary btn-lg" id="registerBtn" disabled>
+                                <i class="bi bi-person-plus me-2"></i>
+                                Crea Account
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Divider -->
+                    <div class="text-center mb-4">
+                        <hr class="my-4">
+                        <span class="bg-white px-3 text-muted">oppure</span>
+                    </div>
+
+                    <!-- Login Link -->
+                    <div class="text-center">
+                        <p class="mb-0 text-muted">
+                            Hai già un account?
+                        </p>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary mt-2">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>
+                            Accedi ora
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer bg-light text-center py-3">
+                    <small class="text-muted">
+                        <i class="bi bi-book me-1"></i>
+                        Unisciti a migliaia di lettori appassionati
+                    </small>
+                </div>
             </div>
-          {% endfor %}
-        {% endif %}
-        <form method="post">
-          <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" name="username" required>
-          </div>
-          <div class="mb-3">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" name="password" required>
-          </div>
-          <button type="submit" class="btn btn-primary w-100">Register</button>
-          <p class="mt-3 text-center">
-            Already have an account? <a href="{{ url_for('login') }}">Login here</a>.
-          </p>
-        </form>
-      </div>
+        </div>
     </div>
-  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Password toggle functionality
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const toggleConfirmIcon = document.getElementById('toggleConfirmIcon');
+
+    function setupPasswordToggle(toggleBtn, passwordField, iconElement) {
+        if (toggleBtn && passwordField && iconElement) {
+            toggleBtn.addEventListener('click', function() {
+                const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordField.setAttribute('type', type);
+                
+                // Toggle icon
+                if (type === 'password') {
+                    iconElement.className = 'bi bi-eye';
+                } else {
+                    iconElement.className = 'bi bi-eye-slash';
+                }
+            });
+        }
+    }
+
+    setupPasswordToggle(togglePassword, passwordInput, toggleIcon);
+    setupPasswordToggle(toggleConfirmPassword, confirmPasswordInput, toggleConfirmIcon);
+
+    // Password matching validation
+    const passwordMatch = document.getElementById('passwordMatch');
+    const registerBtn = document.getElementById('registerBtn');
+    const agreeTerms = document.getElementById('agreeTerms');
+
+    function checkPasswordMatch() {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (confirmPassword === '') {
+            passwordMatch.innerHTML = '';
+            confirmPasswordInput.classList.remove('is-valid', 'is-invalid');
+            return false;
+        }
+        
+        if (password === confirmPassword) {
+            passwordMatch.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i><span class="text-success">Le password coincidono</span>';
+            confirmPasswordInput.classList.remove('is-invalid');
+            confirmPasswordInput.classList.add('is-valid');
+            return true;
+        } else {
+            passwordMatch.innerHTML = '<i class="bi bi-x-circle-fill text-danger me-1"></i><span class="text-danger">Le password non coincidono</span>';
+            confirmPasswordInput.classList.remove('is-valid');
+            confirmPasswordInput.classList.add('is-invalid');
+            return false;
+        }
+    }
+
+    function updateRegisterButton() {
+        const formValid = document.querySelector('.auth-form').checkValidity();
+        const passwordsMatch = checkPasswordMatch();
+        const termsAccepted = agreeTerms.checked;
+        
+        if (formValid && passwordsMatch && termsAccepted) {
+            registerBtn.disabled = false;
+            registerBtn.classList.remove('btn-outline-primary');
+            registerBtn.classList.add('btn-primary');
+        } else {
+            registerBtn.disabled = true;
+            registerBtn.classList.remove('btn-primary');
+            registerBtn.classList.add('btn-outline-primary');
+        }
+    }
+
+    // Event listeners for validation
+    confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+    passwordInput.addEventListener('input', checkPasswordMatch);
+    agreeTerms.addEventListener('change', updateRegisterButton);
+
+    // Form validation feedback
+    const form = document.querySelector('.auth-form');
+    const inputs = form.querySelectorAll('input[required]');
+
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            }
+            updateRegisterButton();
+        });
+
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+            updateRegisterButton();
+        });
+    });
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (!submitBtn.disabled) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creazione account...';
+        }
+    });
+
+    // Auto-focus username field
+    document.getElementById('username').focus();
+
+    // Initial button state check
+    updateRegisterButton();
+});
+</script>
+
+<style>
+.auth-container {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    padding: 2rem 0;
+}
+
+.auth-card {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.auth-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+}
+
+.auth-form .input-group {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.auth-form .input-group-text {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+}
+
+.auth-form .form-control {
+    border-left: none;
+}
+
+.auth-form .form-control:focus {
+    box-shadow: none;
+    border-color: var(--border-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:disabled {
+    opacity: 0.5;
+}
+
+@media (max-width: 576px) {
+    .auth-container {
+        padding: 1rem;
+    }
+    
+    .card-body {
+        padding: 2rem !important;
+    }
+    
+    .auth-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+}
+</style>
 {% endblock %}

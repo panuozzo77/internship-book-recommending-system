@@ -117,7 +117,7 @@ def create_app(app_config: Dict[str, Any]):
 
     @app.route('/')
     def index():
-        """Main page showing the user's book list."""
+        """Main page showing the user's book list with pagination."""
         username = session.get('username')
         if not username:
             return redirect(url_for('login'))
@@ -125,9 +125,24 @@ def create_app(app_config: Dict[str, Any]):
         db = get_db()
         if db is None:
             flash("Database connection not available. Please try again later.", "danger")
-            return render_template('index.html', books=[])
+            return render_template('index.html', books=[], pagination={})
 
-        reviews = list(db.reviews.find({'user_id': username}).sort("date_updated", -1))
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 6  # Number of books per page
+        
+        # Get total count
+        total_books = db.reviews.count_documents({'user_id': username})
+        
+        # Calculate pagination
+        total_pages = (total_books + per_page - 1) // per_page  # Ceiling division
+        skip = (page - 1) * per_page
+        
+        # Get paginated reviews
+        reviews = list(db.reviews.find({'user_id': username})
+                      .sort("date_updated", -1)
+                      .skip(skip)
+                      .limit(per_page))
         
         book_repo = BookRepository(g.db_conn)
         enriched_books = []
@@ -136,8 +151,20 @@ def create_app(app_config: Dict[str, Any]):
             if book_details:
                 review['book_details'] = book_details
             enriched_books.append(review)
+        
+        # Pagination info
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total_books,
+            'total_pages': total_pages,
+            'has_prev': page > 1,
+            'has_next': page < total_pages,
+            'prev_num': page - 1 if page > 1 else None,
+            'next_num': page + 1 if page < total_pages else None
+        }
             
-        return render_template('index.html', books=enriched_books)
+        return render_template('index.html', books=enriched_books, pagination=pagination)
 
     @app.route('/add', methods=['GET', 'POST'])
     def add_book():
@@ -363,7 +390,7 @@ def create_app(app_config: Dict[str, Any]):
 
     @app.route('/api/recommendations')
     def api_recommendations():
-        """API endpoint to get recommendations for the logged-in user."""
+        """API endpoint to get both Content-Based and Collaborative Filtering recommendations for the logged-in user."""
         username = session.get('username')
         if not username:
             return jsonify({"error": "User not logged in"}), 401
@@ -375,21 +402,41 @@ def create_app(app_config: Dict[str, Any]):
         if not recommender_facade:
             return jsonify({"error": "Recommendation engine is not currently available"}), 503
 
-        # You can choose which recommendation strategy to expose here
-        recommendations = recommender_facade.recommend_with_collaborative_filtering(username, top_n=10)
-        if not recommendations:
-            # Fallback to content-based if collaborative fails or returns nothing
-            recommendations = recommender_facade.recommend_with_content_based(username, top_n=10)
-            
-        enriched_recommendations = []
-        if recommendations:
-            book_repo = BookRepository(g.db_conn)
-            for rec in recommendations:
-                book_details = book_repo.get_book_details_by_id(str(rec))
-                if book_details:
-                    enriched_recommendations.append(book_details)
+        book_repo = BookRepository(g.db_conn)
+        
+        # Get Content-Based recommendations
+        content_based_recommendations = []
+        try:
+            content_recs = recommender_facade.recommend_with_content_based(username, top_n=5)
+            if content_recs:
+                for title in content_recs:
+                    book_id = book_repo.get_book_id_by_title(title)
+                    if book_id:
+                        book_details = book_repo.get_book_details_by_id(book_id)
+                        if book_details:
+                            content_based_recommendations.append(book_details)
+        except Exception as e:
+            app.logger.error(f"Error getting content-based recommendations: {e}")
 
-        return jsonify(enriched_recommendations)
+        # Get Collaborative Filtering recommendations
+        collaborative_recommendations = []
+        try:
+            collaborative_recs = recommender_facade.recommend_with_collaborative_filtering(username, top_n=5)
+            if collaborative_recs:
+                for title in collaborative_recs:
+                    book_id = book_repo.get_book_id_by_title(title)
+                    if book_id:
+                        book_details = book_repo.get_book_details_by_id(book_id)
+                        if book_details:
+                            collaborative_recommendations.append(book_details)
+        except Exception as e:
+            app.logger.error(f"Error getting collaborative filtering recommendations: {e}")
+
+        return jsonify({
+            "content_based": content_based_recommendations,
+            "collaborative_filtering": collaborative_recommendations,
+            "total_recommendations": len(content_based_recommendations) + len(collaborative_recommendations)
+        })
 
     @app.route('/api/update_user_profile', methods=['POST'])
     def api_update_user_profile():
