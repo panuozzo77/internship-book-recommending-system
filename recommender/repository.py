@@ -132,10 +132,36 @@ class BookRepository:
             },
             {
                 '$lookup': {
-                    'from': 'series',
-                    'localField': 'series.series_id',
+                    'from': 'book_series',
+                    'localField': 'series',
                     'foreignField': 'series_id',
                     'as': 'series_details'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'book_genres',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'genre_info'
+                }
+            },
+            {
+                '$addFields': {
+                    'genre_names': {
+                        '$cond': [
+                            {'$gt': [{'$size': '$genre_info'}, 0]},
+                            {
+                                '$objectToArray': {
+                                    '$getField': {
+                                        'field': 'genres',
+                                        'input': {'$arrayElemAt': ['$genre_info', 0]}
+                                    }
+                                }
+                            },
+                            []
+                        ]
+                    }
                 }
             },
             {
@@ -145,7 +171,14 @@ class BookRepository:
                     'book_title': 1,
                     'description': 1,
                     'author_names': '$author_details.name',
-                    'series_names': '$series_details.name'
+                    'series_names': '$series_details.name',
+                    'genres': {
+                        '$map': {
+                            'input': '$genre_names',
+                            'as': 'g',
+                            'in': '$$g.k'
+                        }
+                    }
                 }
             }
         ]

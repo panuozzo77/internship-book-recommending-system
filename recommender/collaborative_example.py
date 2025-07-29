@@ -91,7 +91,7 @@ def run_full_recommendation_showcase(user_id: str):
             book = book_repo.get_book_details_by_id(book_id)
             if book:
                 series_names = book.get('series_names', 'N/A')
-                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names})")
+                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names}, genres: {book['genres']})")
             else:
                 print(f"  {i}. [Book details not found]")
             #print(f"  {i}. {title} (ID: {book})")
@@ -108,7 +108,7 @@ def run_full_recommendation_showcase(user_id: str):
             book = book_repo.get_book_details_by_id(book_id)
             if book:
                 series_names = book.get('series_names', 'N/A')
-                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names})")
+                print(f"  {i}. {book['book_title']} (author_names: {book['author_names']}, series_names: {series_names}, genres: {book['genres']})")
             else:
                 print(f"  {i}. [Book details not found]")
     else:
@@ -123,5 +123,5 @@ if __name__ == "__main__":
     
     #TEST_USER_ID = 'cristian'
     TEST_USER_ID = '8842281e1d1347389f2ab93d60773d4d'
-    
+
     run_full_recommendation_showcase(TEST_USER_ID)
