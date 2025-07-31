@@ -1,51 +1,314 @@
 {% extends 'layout.html' %}
 
-{% block title %}Aggiungi Libro{% endblock %}
+{% block title %}🔍 Aggiungi Libro - Book Profiler{% endblock %}
 
 {% block content %}
-    <h1>Cerca un Libro da Aggiungere</h1>
-    <p class="lead">Cerca per titolo o parole chiave nella descrizione.</p>
-
-    <form method="post" class="mb-4">
-        <div class="input-group">
-            <input type="text" name="query" class="form-control" placeholder="Cerca un libro o un autore con {nome autore}..." value="{{ previous_query | default('', true) }}" required>
-            <button type="submit" class="btn btn-primary">Cerca</button>
+    <div class="hero-section mb-5">
+        <div class="text-center">
+            <h1 class="mb-3">
+                <i class="bi bi-search me-2"></i>
+                Cerca un Libro da Aggiungere
+            </h1>
+            <p class="lead">
+                Trova il tuo prossimo libro preferito e aggiungilo alla tua collezione personale
+            </p>
         </div>
-    </form>
+    </div>
 
-    {% if search_results %}
-        <h2>Risultati della Ricerca</h2>
-        <div class="list-group">
-            {% for result in search_results %}
-                <div class="list-group-item mb-3">
-                    <h5>{{ result.book_title }}</h5>
-                    <p class="mb-1 text-muted small">{{ result.description[:250] }}...</p>
-                    
-                    <hr>
-
-                    <form action="{{ url_for('save_book') }}" method="post">
-                        <input type="hidden" name="book_id" value="{{ result.book_id }}">
-                        <input type="hidden" name="book_title" value="{{ result.book_title }}">
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Valutazione (da 1 a 5):</label>
-                             <div class="star-rating">
-                                {% for i in range(5, 0, -1) %}
-                                    <input type="radio" id="new-star-{{ result._id }}-{{ i }}" name="rating" value="{{ i }}" required>
-                                    <label for="new-star-{{ result._id }}-{{ i }}">★</label>
-                                {% endfor %}
+    <div class="search-section mb-5">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" class="search-form">
+                    <div class="row align-items-end">
+                        <div class="col-lg-9 col-md-8 mb-3 mb-md-0">
+                            <label for="search-query" class="form-label fw-semibold">
+                                <i class="bi bi-search me-1"></i>
+                                Cosa stai cercando?
+                            </label>
+                            <input 
+                                type="text" 
+                                name="query" 
+                                id="search-query"
+                                class="form-control form-control-lg" 
+                                placeholder="Es: Harry Potter, Stephen King, {Stephen King}..." 
+                                value="{{ previous_query | default('', true) }}" 
+                                required
+                            >
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Cerca per titolo, oppure usa <code>{nome autore}</code> per cercare un autore specifico
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="review-{{ result._id }}" class="form-label">Recensione (opzionale):</label>
-                            <textarea class="form-control" id="review-{{ result._id }}" name="review_text" rows="2"></textarea>
+                        <div class="col-lg-3 col-md-4">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-search me-2"></i>
+                                Cerca Libro
+                            </button>
                         </div>
-                        <button type="submit" class="btn btn-success">Aggiungi alla mia lista</button>
-                    </form>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% if search_results %}
+        <div class="search-results">
+            <div class="d-flex align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="bi bi-list-ul me-2"></i>
+                    Risultati della Ricerca
+                </h2>
+                <span class="badge bg-primary ms-3 fs-6">{{ search_results|length }} libri trovati</span>
+            </div>
+            
+            <div class="row g-4">
+                {% for result in search_results %}
+                    <div class="col-lg-6 col-xl-4">
+                        <div class="card h-100 search-result-card">
+                            <div class="card-body">
+                                <div class="book-info mb-4">
+                                    <h5 class="card-title mb-3">
+                                        <i class="bi bi-book text-primary me-2"></i>
+                                        {{ result.book_details.book_title }}
+                                    </h5>
+                                    
+                                    <div class="book-meta mb-3">
+                                        <p class="card-subtitle text-muted mb-2">
+                                            <i class="bi bi-person-fill me-1"></i>
+                                            {{ result.book_details.author_names | join(', ') }}
+                                        </p>
+                                        
+                                        {% if result.book_details.series_names %}
+                                            <p class="card-subtitle text-muted mb-2">
+                                                <i class="bi bi-collection me-1"></i>
+                                                {{ result.book_details.series_names | join(', ') }}
+                                            </p>
+                                        {% endif %}
+                                        
+                                        {% if result.book_details.genres %}
+                                            <div class="genres mb-2">
+                                                {% for genre in result.book_details.genres[:3] %}
+                                                    <span class="badge bg-light text-dark me-1">{{ genre }}</span>
+                                                {% endfor %}
+                                                {% if result.book_details.genres|length > 3 %}
+                                                    <span class="badge bg-light text-dark">+{{ result.book_details.genres|length - 3 }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    {% if result.book_details.description %}
+                                        <p class="card-text text-muted small description-preview">
+                                            <i class="bi bi-quote me-1"></i>
+                                            {{ result.book_details.description[:200] }}{% if result.book_details.description|length > 200 %}...{% endif %}
+                                        </p>
+                                    {% endif %}
+                                </div>
+
+                                <hr class="my-4">
+
+                                <form action="{{ url_for('save_book') }}" method="post" class="add-book-form">
+                                    <input type="hidden" name="book_id" value="{{ result.book_id }}">
+                                    <input type="hidden" name="book_title" value="{{ result.book_details.book_title }}">
+                                    
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold">
+                                            <i class="bi bi-star-fill text-warning me-1"></i>
+                                            La tua valutazione (obbligatoria):
+                                        </label>
+                                        <div class="star-rating">
+                                            {% for i in range(5, 0, -1) %}
+                                                <input type="radio" id="new-star-{{ result.book_id }}-{{ i }}" name="rating" value="{{ i }}" required>
+                                                <label for="new-star-{{ result.book_id }}-{{ i }}">★</label>
+                                            {% endfor %}
+                                        </div>
+                                        <div class="form-text">Seleziona da 1 a 5 stelle</div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="review-{{ result.book_id }}" class="form-label fw-semibold">
+                                            <i class="bi bi-chat-square-text me-1"></i>
+                                            La tua recensione (opzionale):
+                                        </label>
+                                        <textarea 
+                                            class="form-control" 
+                                            id="review-{{ result.book_id }}" 
+                                            name="review_text" 
+                                            rows="3"
+                                            placeholder="Condividi i tuoi pensieri su questo libro...">
+                                        </textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-circle me-2"></i>
+                                        Aggiungi alla Mia Collezione
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% elif request.method == 'POST' %}
+        <div class="no-results text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-search display-1 text-muted"></i>
+            </div>
+            <h3 class="text-muted mb-3">Nessun risultato trovato</h3>
+            <p class="text-muted mb-4">
+                Non ho trovato libri corrispondenti alla tua ricerca "<strong>{{ previous_query }}</strong>".<br>
+                Prova con parole chiave diverse o verifica l'ortografia.
+            </p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('search-query').focus()">
+                    <i class="bi bi-arrow-up me-1"></i>
+                    Prova una nuova ricerca
+                </button>
+            </div>
+        </div>
+    {% else %}
+        <div class="search-tips">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightbulb text-warning me-2"></i>
+                        Suggerimenti per la ricerca
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-book me-1"></i> Cerca per titolo:</h6>
+                            <ul class="list-unstyled">
+                                <li><code>Harry Potter</code></li>
+                                <li><code>Il nome della rosa</code></li>
+                                <li><code>1984</code></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-person me-1"></i> Cerca per autore:</h6>
+                            <ul class="list-unstyled">
+                                <li><code>{Stephen King}</code></li>
+                                <li><code>{J.K. Rowling}</code></li>
+                                <li><code>{Umberto Eco}</code></li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-            {% endfor %}
+            </div>
         </div>
     {% endif %}
+{% endblock %}
 
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add search form interactivity
+    const searchForm = document.querySelector('.search-form');
+    const searchInput = document.getElementById('search-query');
+    
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Ricerca in corso...';
+        });
+    }
+    
+    // Add interactive effects to search result cards
+    const resultCards = document.querySelectorAll('.search-result-card');
+    resultCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.boxShadow = 'var(--shadow-lg)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'var(--shadow-md)';
+        });
+    });
+    
+    // Add rating interactivity feedback
+    const starRatings = document.querySelectorAll('.star-rating');
+    starRatings.forEach(rating => {
+        const inputs = rating.querySelectorAll('input[type="radio"]');
+        inputs.forEach(input => {
+            input.addEventListener('change', function() {
+                // Add visual feedback when rating is selected
+                const form = this.closest('form');
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.classList.add('btn-success');
+                submitBtn.classList.remove('btn-outline-success');
+            });
+        });
+    });
+    
+    // Auto-focus search input if no results found after search
+    if (window.location.search.includes('no-results')) {
+        setTimeout(() => {
+            searchInput.focus();
+            searchInput.select();
+        }, 100);
+    }
+});
+</script>
+
+<style>
+.search-result-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.description-preview {
+    font-style: italic;
+    line-height: 1.5;
+}
+
+.genres .badge {
+    font-size: 0.75rem;
+}
+
+.star-rating {
+    padding: 0.5rem 0;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+    padding: 3rem 2rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.search-section .card {
+    border: 2px solid var(--primary-color);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+}
+
+.no-results {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: var(--border-radius);
+    margin: 2rem 0;
+}
+
+.search-tips {
+    margin-top: 2rem;
+}
+
+.add-book-form {
+    background: rgba(16, 185, 129, 0.02);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 1rem;
+    }
+    
+    .search-section .row {
+        gap: 1rem;
+    }
+}
+</style>
 {% endblock %}

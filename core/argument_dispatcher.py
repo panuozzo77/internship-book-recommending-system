@@ -52,8 +52,10 @@ class ArgumentDispatcher:
         """Handles recommendation subcommand actions."""
         if self.args.by_title:
             dispatcher_actions.recommend_by_titles(self.args.by_title, self.args.top_n)
-        elif self.args.by_user_id:
-            dispatcher_actions.recommend_for_user_id(self.args.by_user_id, self.args.top_n)
+        elif self.args.by_user_id_content_based:
+            dispatcher_actions.recommend_for_user_id_content_based(self.args.by_user_id_content_based, self.args.top_n)
+        elif self.args.by_user_id_collaborative:
+            dispatcher_actions.recommend_for_user_id_collaborative(self.args.by_user_id_collaborative, self.args.top_n)
         elif self.args.by_profile_file:
             dispatcher_actions.recommend_from_profile_file(self.args.by_profile_file, self.args.top_n)
 
@@ -65,6 +67,8 @@ class ArgumentDispatcher:
                 output_path=self.args.schema_output_path,
                 output_mode=self.args.schema_output_mode
             )
+        elif self.args.build_user_profiles:
+            dispatcher_actions.build_user_profiles()
 
     def _handle_webui(self) -> None:
         """Handles web UI subcommand action."""

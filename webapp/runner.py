@@ -11,36 +11,39 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from webapp.app import app  # Importa l'istanza 'app' di Flask dal tuo file app.py
+from webapp.app import create_app  # Import the create_app factory function
 from core.utils.LoggerManager import LoggerManager
 
 def run_web_ui(app_config: Dict[str, Any]):
     """
-    Configura e avvia il server di sviluppo di Flask.
+    Initializes and runs the Flask web application using the factory pattern.
     
     Args:
-        app_config: Il dizionario di configurazione principale dell'applicazione.
+        app_config: The main application configuration dictionary.
     """
     logger = LoggerManager().get_logger()
-    logger.info("Avvio dell'interfaccia utente web (WebUI)...")
+    logger.info("Initializing and starting the Web User Interface (WebUI)...")
 
-    # Recupera le configurazioni per il server web, con dei fallback di default
+    # Create the Flask app instance using the factory
+    # The factory will handle all app-specific configurations
+    app = create_app(app_config)
+
+    # Get web server configurations from the app_config, with defaults
     web_config = app_config.get("webapp", {})
     host = web_config.get("host", "127.0.0.1")
     port = web_config.get("port", 5001)
     debug = web_config.get("debug", True)
 
-    logger.info(f"Il server web sarà disponibile su http://{host}:{port}")
+    logger.info(f"Web server will be available at http://{host}:{port}")
     if debug:
-        logger.warning("Il server sta girando in modalità DEBUG. Non usare in produzione.")
+        logger.warning("Server is running in DEBUG mode. Do not use in a production environment.")
 
     try:
-        # L'app Flask viene eseguita qui.
-        # Questa chiamata è bloccante, il che significa che il programma
-        # rimarrà in esecuzione qui finché non si ferma il server (es. con CTRL+C).
+        # Run the created app instance
+        # This call is blocking and will keep the program running until the server is stopped.
         app.run(host=host, port=port, debug=debug)
     except Exception as e:
-        logger.critical(f"Errore critico durante l'avvio del server web: {e}", exc_info=True)
+        logger.critical(f"A critical error occurred while running the web server: {e}", exc_info=True)
         sys.exit(1)
 
-    logger.info("Il server web è stato fermato.")
+    logger.info("Web server has been shut down.")

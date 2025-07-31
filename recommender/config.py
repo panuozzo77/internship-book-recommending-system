@@ -15,3 +15,7 @@ GENRE_PREFERENCE_BONUS_WEIGHT: Final[float] = 0.3 # Peso per bonus/malus basato 
 # --- Persistence Configuration ---
 MODEL_ARTIFACTS_DIR_KEY: Final[str] = 'processed_datasets_dir'
 MODEL_FILENAME_TEMPLATE: Final[str] = 'recommender_model_v{version}.joblib'
+
+# --- Collaborative Filtering Configuration ---
+COLLABORATIVE_N_NEIGHBORS: Final[int] = 15 # Number of similar users to consider
+COLLABORATIVE_MIN_COMMON_BOOKS: Final[int] = 3 # Min books in common to be a valid neighbor

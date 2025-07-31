@@ -8,7 +8,7 @@ from time import time
 import logging
 
 # --- Configuration ---
-MONGO_URI = "mongodb://localhost:27017/"
+MONGO_URI = "mongodb://mindsdb:password@localhost:27017/?authSource=gr_recommender"
 DATABASE_NAME = "gr_recommender"  # <-- IMPORTANT: Change this to your database name
 PROGRESS_COLLECTION_NAME = "dedup_progress_log"
 # Process this many work_id groups before sending a bulk command to the DB.

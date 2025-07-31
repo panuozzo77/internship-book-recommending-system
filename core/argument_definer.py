@@ -94,10 +94,16 @@ class ArgumentDefiner:
             help="Recommend based on a list of book titles"
         )
         method_group.add_argument(
-            "--by-user-id",
+            "--by-user-id-content-based",
             type=str,
             metavar="USER_ID",
-            help="Recommend for an existing user from database"
+            help="Recommend for a user using content-based filtering"
+        )
+        method_group.add_argument(
+            "--by-user-id-collaborative",
+            type=str,
+            metavar="USER_ID",
+            help="Recommend for a user using collaborative filtering"
         )
         method_group.add_argument(
             "--by-profile-file",
@@ -129,7 +135,11 @@ class ArgumentDefiner:
             action="store_true",
             help="Perform schema inference from source files"
         )
-        # Can add more tools here as needed
+        action_group.add_argument(
+            "--build-user-profiles",
+            action="store_true",
+            help="Build user profiles and FAISS index for collaborative filtering"
+        )
 
         # Schema inference arguments
         tools_parser.add_argument(

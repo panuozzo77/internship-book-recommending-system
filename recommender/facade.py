@@ -1,106 +1,162 @@
 # recommender/facade.py
-from typing import List, Any, Set
+from typing import List, Any, Set, Tuple, Optional
 import pandas as pd
 import numpy as np
 
-from recommender.engine import ContentBasedRecommender
+from recommender.engine import ContentBasedRecommender, CollaborativeFilteringRecommender
 from recommender.repository import UserInteractionRepository
+from recommender.user_profile_repository import UserProfileRepository
+from recommender.taste_vector_calculator import TasteVectorCalculator
 from recommender.model import RecommenderModel
+from recommender.user_profile_index import UserProfileIndex
+from recommender import config
 
 class UserRecommenderFacade:
     """
-    Fornisce un'interfaccia semplice per ottenere raccomandazioni per un utente specifico.
-    Orchestra il recupero dei dati dell'utente e l'uso del motore content-based.
+    Provides a unified interface for generating recommendations using different strategies.
+    It orchestrates the interaction between data repositories, user profile management,
+    and the underlying recommendation engines.
     """
     def __init__(
         self,
-        recommender: ContentBasedRecommender,
-        interaction_repo: UserInteractionRepository
+        content_recommender: ContentBasedRecommender,
+        collaborative_recommender: CollaborativeFilteringRecommender,
+        interaction_repo: UserInteractionRepository,
+        user_profile_repo: UserProfileRepository,
+        taste_vector_calculator: TasteVectorCalculator,
+        user_profile_index: UserProfileIndex
     ):
-        self.recommender = recommender
+        self.content_recommender = content_recommender
+        self.collaborative_recommender = collaborative_recommender
         self.interaction_repo = interaction_repo
-        self.model: RecommenderModel = self.recommender.model # Accesso diretto al modello per comodità
+        self.user_profile_repo = user_profile_repo
+        self.taste_vector_calculator = taste_vector_calculator
+        self.user_profile_index = user_profile_index
+        self.model: RecommenderModel = self.content_recommender.model
 
-    def recommend_for_user(self, user_id: Any, top_n: int = 10) -> List[str]:
+    def load_indices(self):
+        """Loads the user profile FAISS index into memory."""
+        self.user_profile_index.load()
+
+    def recommend_with_content_based(self, user_id: Any, top_n: int = 10) -> List[str]:
         """
-        Genera raccomandazioni per un utente basandosi sulla sua cronologia di letture.
-        
-        Questo metodo implementa la logica di profilazione:
-        1. Recupera i libri letti dall'utente e i loro rating.
-        2. Crea un "vettore profilo" ponderato: i libri piaciuti (rating > 3)
-           contribuiscono positivamente, quelli non piaciuti (rating < 3) negativamente.
-        3. Calcola la media delle pagine dei libri *molto apprezzati* (rating >= 4)
-           per il re-ranking.
-        4. Usa il motore content-based per trovare libri simili al profilo.
-        5. Esclude i libri che l'utente ha già letto.
+        Generates recommendations for a user based on their personal taste profile.
         """
-        # 1. Recupera i libri letti dall'utente (con i rating)
         user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
-        
         if user_history_df.empty:
             return []
 
-        read_book_titles = user_history_df['book_title'].tolist()
-        read_indices = self.recommender._get_indices_from_titles(read_book_titles)
-        if not read_indices:
-            return []
-        
-        # 2. Crea il profilo utente ponderato
-        profile_accumulator = np.zeros(self.model.vector_size, dtype=np.float32)
-        total_weight_magnitude = 0.0
-        liked_page_counts = []
-        preferred_genres: Set[str] = set()
-        disliked_genres: Set[str] = set()
-
-        read_indices_set = set()
-        
-        for row in user_history_df.itertuples():
-            book_idx = self.model.title_to_idx.get(row.book_title)
-            if book_idx is None:
-                continue
-
-            read_indices_set.add(book_idx)
-            book_vector = self.model.index.get_item_vector(book_idx)
-            
-            # Calcola il peso basato sul rating (da -1 a +1)
-            weight = (float(row.rating) - 3.0) / 2.0
-            
-            profile_accumulator += np.array(book_vector, dtype=np.float32) * weight
-            total_weight_magnitude += abs(weight)
-
-            # Raccogli i page_count solo per i libri molto apprezzati (voto >= 4)
-            if row.rating >= 4 and pd.notna(row.page_count):
-                liked_page_counts.append(float(row.page_count))
-
-            book_genres = self.model.book_metadata.iloc[book_idx]['key_genres']
-            if book_genres:
-                if row.rating >= 4:
-                    preferred_genres.update(book_genres)
-                elif row.rating <= 2:
-                    disliked_genres.update(book_genres)
-
-        if not read_indices_set:
+        profile_vector = self.taste_vector_calculator.calculate(user_history_df)
+        if profile_vector is None:
             return []
 
-        # 3. Finalizza il profilo e il contesto per il re-ranking
-        if total_weight_magnitude > 0:
-            profile_vector = profile_accumulator / total_weight_magnitude
-        else:
-            # Fallback a media semplice se tutti i voti sono neutri (3)
-            read_vectors = [self.model.index.get_item_vector(i) for i in read_indices_set]
-            profile_vector = np.mean(read_vectors, axis=0) if read_vectors else np.zeros(self.model.vector_size)
-
-        avg_page_count = np.mean(liked_page_counts) if liked_page_counts else 0.0
-        rerank_context = {'avg_page_count': avg_page_count,
-                          'preferred_genres': preferred_genres,
-                          'disliked_genres': disliked_genres.difference(preferred_genres)}
+        rerank_context, read_indices = self._prepare_rerank_context(user_history_df)
         
-        # 4. Ottieni raccomandazioni usando il profilo
-        recommendations = self.recommender.get_recommendations_by_profile(
+        return self.content_recommender.get_recommendations_by_profile(
             profile_vector=profile_vector,
-            exclude_indices=set(read_indices),
+            exclude_indices=read_indices,
             top_n=top_n,
             rerank_context=rerank_context
         )
+
+    def recommend_with_collaborative_filtering(self, user_id: Any, top_n: int = 10) -> List[str]:
+        """
+        Generates recommendations by finding similar users via the FAISS index.
+        """
+        target_user_vector = self._get_or_create_user_profile(user_id)
+        if target_user_vector is None:
+            return []
+
+        user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
+        rerank_context, read_indices = self._prepare_rerank_context(user_history_df)
+
+        return self.collaborative_recommender.recommend(
+            target_user_vector=target_user_vector,
+            interaction_repo=self.interaction_repo,
+            exclude_indices=read_indices,
+            rerank_context=rerank_context,
+            top_n=top_n,
+            num_neighbors=config.COLLABORATIVE_N_NEIGHBORS,
+            user_id=user_id
+        )
+
+    def _get_or_create_user_profile(self, user_id: Any) -> Optional[np.ndarray]:
+        """
+        Retrieves a user's taste vector. If the user is new, it calculates
+        their profile, saves it to the database, and dynamically adds it to the
+        live FAISS index.
+        """
+        # For existing users, their profile is already in the FAISS index.
+        # We just need to fetch it from the DB for the query.
+        profile_vector = self.user_profile_repo.find_by_user_id(user_id)
+        if profile_vector is not None:
+            return profile_vector
         
-        return recommendations
+        # If not found, it's a new user. Calculate their profile.
+        user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
+        if user_history_df.empty:
+            return None
+            
+        new_profile_vector = self.taste_vector_calculator.calculate(user_history_df)
+        
+        if new_profile_vector is not None:
+            # Save to DB for persistence
+            self.user_profile_repo.save_or_update(user_id, new_profile_vector)
+            
+            # Dynamically add to the live FAISS index
+            # This requires a mapping from the string user_id to a new integer ID
+            str_id = str(user_id)
+            if str_id not in self.user_profile_index.str_to_int_id_map:
+                # Assign a new integer ID (the current size of the map)
+                new_int_id = len(self.user_profile_index.str_to_int_id_map)
+                self.user_profile_index.add(new_int_id, new_profile_vector)
+                # Update the maps
+                self.user_profile_index.int_to_str_id_map[new_int_id] = str_id
+                self.user_profile_index.str_to_int_id_map[str_id] = new_int_id
+
+        return new_profile_vector
+
+    def _prepare_rerank_context(self, user_history_df: pd.DataFrame) -> Tuple[dict, Set[int]]:
+        """
+        Extracts information needed for re-ranking from a user's history.
+        """
+        if user_history_df.empty:
+            return {}, set()
+
+        liked_page_counts = []
+        preferred_genres: Set[str] = set()
+        disliked_genres: Set[str] = set()
+        read_indices: Set[int] = set()
+
+        for row in user_history_df.itertuples():
+            title = getattr(row, 'book_title', None)
+            rating = getattr(row, 'rating', 0.0)
+            page_count = getattr(row, 'page_count', None)
+
+            if title is None:
+                continue
+            book_idx = self.model.title_to_idx.get(title)
+            if book_idx is None:
+                continue
+            
+            read_indices.add(book_idx)
+            
+            if rating >= 4 and pd.notna(page_count):
+                liked_page_counts.append(float(page_count))
+
+            book_genres = self.model.book_metadata.iloc[book_idx]['key_genres']
+            if book_genres:
+                if rating >= 4:
+                    preferred_genres.update(book_genres)
+                elif rating <= 2:
+                    disliked_genres.update(book_genres)
+        
+        avg_page_count = np.mean(liked_page_counts) if liked_page_counts else 0.0
+        
+        rerank_context = {
+            'avg_page_count': avg_page_count,
+            'preferred_genres': preferred_genres,
+            'disliked_genres': disliked_genres.difference(preferred_genres)
+        }
+        
+        return rerank_context, read_indices

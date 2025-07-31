@@ -1,8 +1,10 @@
 # recommender/repository.py
+import re
 import pandas as pd
-from typing import Any, List, Set
+from typing import Any, List, Set, Optional
 from etl.MongoDBConnection import MongoDBConnection
 from core.utils.LoggerManager import LoggerManager
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class BookRepository:
     """
@@ -110,10 +112,105 @@ class BookRepository:
         ]
         
         cursor = self.db['books'].aggregate(pipeline)
-        top_shelves = {doc['_id'] for doc in cursor}
+        top_shelves = {doc['_id'] for doc in cursor} if cursor else set()
         self.logger.info(f"Found {len(top_shelves)} unique top shelves.")
         return top_shelves
     
+    def get_book_details_by_id(self, book_id: str) -> Optional[dict]:
+        """
+        Retrieves detailed information for a single book, including author and series.
+        """
+        self.logger.info(f"Fetching details for book_id '{book_id}'...")
+        pipeline = [
+            {'$match': {'book_id': book_id}},
+            {
+                '$lookup': {
+                    'from': 'authors',
+                    'localField': 'author_id.author_id',
+                    'foreignField': 'author_id',
+                    'as': 'author_details'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'book_series',
+                    'localField': 'series',
+                    'foreignField': 'series_id',
+                    'as': 'series_details'
+                }
+            },
+            {
+                '$lookup': {
+                    'from': 'book_genres',
+                    'localField': 'book_id',
+                    'foreignField': 'book_id',
+                    'as': 'genre_info'
+                }
+            },
+            {
+                '$addFields': {
+                    'genre_names': {
+                        '$cond': [
+                            {'$gt': [{'$size': '$genre_info'}, 0]},
+                            {
+                                '$objectToArray': {
+                                    '$getField': {
+                                        'field': 'genres',
+                                        'input': {'$arrayElemAt': ['$genre_info', 0]}
+                                    }
+                                }
+                            },
+                            []
+                        ]
+                    }
+                }
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'book_id': 1,
+                    'book_title': 1,
+                    'description': 1,
+                    'author_names': '$author_details.name',
+                    'series_names': '$series_details.name',
+                    'genres': {
+                        '$map': {
+                            'input': '$genre_names',
+                            'as': 'g',
+                            'in': '$$g.k'
+                        }
+                    }
+                }
+            }
+        ]
+        
+        cursor = self.db['books'].aggregate(pipeline)
+        result = list(cursor)
+        
+        if not result:
+            self.logger.warning(f"No details found for book_id '{book_id}'.")
+            return None
+        
+        book = result[0]
+        book['book_title'] = re.sub(r'\s*\([^)]*#\d+[^)]*\)\s*$', '', book['book_title']).strip()
+
+        return book
+    
+    def get_book_id_by_title(self, book_title: str) -> Optional[str]:
+        """
+        Retrieves the book_id for a given book_title.
+        """
+        self.logger.info(f"Fetching book_id for title '{book_title}'...")
+        result = self.db[self.collection_name].find_one(
+            {'book_title': book_title},
+            {'_id': 0, 'book_id': 1}
+        )
+        if result and 'book_id' in result:
+            return result['book_id']
+        
+        self.logger.warning(f"No book found with title '{book_title}'.")
+        return None
+
 class UserInteractionRepository:
     """
     Responsabile del caricamento dei dati di interazione utente-libro da MongoDB.
@@ -206,3 +303,42 @@ class UserInteractionRepository:
             self.logger.warning(f"No interactions found for user_id '{user_id}'.")
         
         return df
+
+class UserRepository:
+    """
+    Manages user data persistence in MongoDB, including authentication.
+    """
+    def __init__(self, db_connection: MongoDBConnection, collection_name: str = 'users'):
+        self.db = db_connection.get_database()
+        self.collection = self.db[collection_name]
+        self.logger = LoggerManager().get_logger()
+
+    def create_user(self, username: str, password: str) -> Optional[Any]:
+        """
+        Creates a new user with a hashed password.
+        Returns the new user's ID if successful, otherwise None.
+        """
+        if self.find_user_by_username(username):
+            self.logger.warning(f"User '{username}' already exists.")
+            return None
+        
+        hashed_password = generate_password_hash(password)
+        user_data = {
+            'username': username,
+            'password': hashed_password
+        }
+        result = self.collection.insert_one(user_data)
+        self.logger.info(f"User '{username}' created successfully.")
+        return result.inserted_id
+
+    def find_user_by_username(self, username: str) -> Optional[dict]:
+        """Finds a user by their username."""
+        return self.collection.find_one({'username': username})
+
+    def check_password(self, username: str, password: str) -> bool:
+        """Checks if the provided password is correct for the given username."""
+        user = self.find_user_by_username(username)
+        if user and check_password_hash(user['password'], password):
+            return True
+        return False
+    
