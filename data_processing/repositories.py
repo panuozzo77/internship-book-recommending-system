@@ -27,6 +27,7 @@ class MongoBookRepository:
         self.adder_log_collection = self.db.book_addition_log
         self.updater_log_collection = self.db.book_update_log
         self.scraped_genres_collection = self.db.book_genres_scraped
+        self.field_sources_log_collection = self.db.field_sources_log
 
     def _get_next_sequence_value(self, sequence_name: str) -> str:
         """Genera un ID progressivo stringa (es. 'add_book_124')."""
@@ -145,3 +146,15 @@ class MongoBookRepository:
         #log_entry = {"status": status, "timestamp": datetime.now(timezone.utc), **details}
         log_entry = {"status": status, "timestamp": datetime.datetime.now(datetime.timezone.utc), **details}
         log_collections[collection_name].insert_one(log_entry)
+
+    def log_field_sources(self, book_id: str, field_sources: Dict[str, str]):
+        """Salva da quale provider è stato ottenuto ogni campo."""
+        if not field_sources:
+            return
+        
+        log_entry = {
+            "book_id": book_id,
+            "sources": field_sources,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc)
+        }
+        self.field_sources_log_collection.insert_one(log_entry)

@@ -26,6 +26,9 @@ class BookMetadata(TypedDict, total=False):
     genres: List[str]                  # Generi in formato libero (es. ["Science Fiction", "Dystopian"])
     popular_shelves: List[Dict[str, Any]] # Es. [{"count": "123", "name": "to-read"}]
     series: BookSeriesMetadata         # Informazioni sulla serie a cui appartiene il libro
+    
+    # --- Dati di tracciamento ---
+    field_sources: Dict[str, str]      # Dizionario che traccia da quale provider proviene ogni campo
 
 class BookDataProvider(ABC):
     """

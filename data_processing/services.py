@@ -31,7 +31,7 @@ class BookCreationService:
             self.repo.log_operation("addition", "DUPLICATE", log_details)
             return {"status": "DUPLICATE", "message": "Book with this title and author already exists."}
 
-        metadata = self.aggregator.fetch_best_metadata(title, [author_name])
+        metadata, field_sources = self.aggregator.fetch_best_metadata(title, [author_name])
         if not metadata or not metadata.get("title"):
             self.logger.error(f"Dati insufficienti per '{title}'. Impossibile creare.")
             self.repo.log_operation("addition", "FAILED_NO_DATA", log_details)
@@ -52,6 +52,9 @@ class BookCreationService:
             result = self.repo.add_book(new_book_doc)
             new_book_id = new_book_doc["book_id"] # L'ID è stato generato e aggiunto dal repository
 
+            # Log field sources
+            self.repo.log_field_sources(new_book_id, field_sources)
+
             scraped_genres = metadata.get("genres", [])
             if scraped_genres:
                 self.repo.add_scraped_genres(new_book_id, scraped_genres)
@@ -69,7 +72,7 @@ class BookCreationService:
                     self.repo.add_genres(new_book_id, mapped_genres)
 
             self.repo.log_operation("addition", "SUCCESS", {"new_book_id": new_book_id, **log_details})
-            return {"status": "SUCCESS", "book_id": new_book_id, "data": new_book_doc}
+            return {"status": "SUCCESS", "book_id": new_book_id, "data": new_book_doc, "field_sources": field_sources}
         except Exception as e:
             self.logger.critical(f"Errore durante la creazione del libro '{title}': {e}", exc_info=True)
             self.repo.log_operation("addition", "ERROR", {"reason": str(e), **log_details})
@@ -125,7 +128,7 @@ class BookUpdateService:
         if "genres" in book_doc_for_aggregator:
             del book_doc_for_aggregator["genres"]
 
-        metadata = self.aggregator.fetch_best_metadata(
+        metadata, field_sources = self.aggregator.fetch_best_metadata(
             book_doc["book_title"],
             [author_name],
             existing_data=BookMetadata(**book_doc_for_aggregator)
@@ -137,6 +140,10 @@ class BookUpdateService:
         
         update_payload = self._create_update_payload(book_doc, metadata)
         
+        # Log field sources for new fields
+        if update_payload:
+            self.repo.log_field_sources(book_id, {k: v for k, v in field_sources.items() if k in update_payload})
+
         # Gestione aggiornamento generi
         scraped_genres = metadata.get("genres")
         if scraped_genres:
@@ -167,7 +174,7 @@ class BookUpdateService:
             if result.modified_count > 0:
                 self.logger.info(f"Libro ID {book_id} aggiornato con successo. Campi: {list(update_payload.keys())}")
                 self.repo.log_operation("update", "SUCCESS", {"book_id": book_id, "updated_fields": list(update_payload.keys()), **log_details})
-                return {"status": "SUCCESS", "book_id": book_id, "updated_fields": list(update_payload.keys())}
+                return {"status": "SUCCESS", "book_id": book_id, "updated_fields": list(update_payload.keys()), "field_sources": field_sources}
             else:
                 return {"status": "NO_CHANGES_NEEDED", "message": "The book is already up-to-date."}
         except Exception as e:
