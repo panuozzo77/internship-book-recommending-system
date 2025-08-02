@@ -47,7 +47,7 @@ def load_test_cases_from_csv(file_path: str) -> list[dict[str, str]]:
     return test_cases
 
 def main():
-    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config2.json')
+    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config3.json')
 
     # --- 1. SETUP E COMPOSITION ROOT ---
     # Inizializza logger, .env, connessione DB...
@@ -68,6 +68,8 @@ def main():
     # Crea le istanze delle dipendenze
     providers = [] #[OpenLibraryProvider()] # Aggiungi qui tutti i tuoi provider
     
+    '''
+
     rust_scraper_project_dir = os.getenv("RUST_SCRAPER_DIR")
     if rust_scraper_project_dir:
         # Espandi il percorso (es. converte ~ in /home/user)
@@ -110,6 +112,7 @@ def main():
             logger.warning(f"La directory dello scraper Rust '{expanded_rust_dir}' non esiste. Goodreads provider disabilitato.")
     else:
         logger.warning("Variabile d'ambiente RUST_SCRAPER_DIR non impostata. Goodreads provider disabilitato.")
+    '''
 
     google_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
     if google_api_key:
@@ -195,7 +198,7 @@ def main():
     
     # Determina se l'LLM è stato usato per il nome del file
     llm_suffix = "_llm" if use_llm_mapper else "_keyword"
-    tester.save_results_to_csv(f"performance_results{llm_suffix}.csv")
+    tester.save_results_to_csv(f"performance_results{llm_suffix}_others.csv")
 
     print("-" * 60)
     logger.info("Operazioni di test completate.")

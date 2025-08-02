@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import ast
+import io
 
 def analyze_performance_data(filename="performance_results_llm.csv"):
     try:
@@ -32,6 +33,7 @@ def analyze_performance_data(filename="performance_results_llm.csv"):
     print(contribution_summary)
     print("\n")
 
+    plot_buffers = []  # Lista per salvare le immagini in memoria
 
     # --- Visualizzazioni ---
     sns.set_theme(style="whitegrid")
@@ -42,7 +44,12 @@ def analyze_performance_data(filename="performance_results_llm.csv"):
     plt.title('Distribuzione dei Tempi di Esecuzione per Tipo di Operazione')
     plt.xlabel('Tipo di Test')
     plt.ylabel('Tempo di Esecuzione (secondi)')
-    plt.show()
+    
+    buf1 = io.BytesIO()
+    plt.savefig(buf1, format='png')
+    buf1.seek(0)
+    plot_buffers.append(buf1)
+    plt.close()
 
     # 2. Bar chart del conteggio degli stati
     plt.figure(figsize=(12, 6))
@@ -51,7 +58,13 @@ def analyze_performance_data(filename="performance_results_llm.csv"):
     plt.xlabel('Numero di Occorrenze')
     plt.ylabel('Stato del Risultato')
     plt.tight_layout()
-    plt.show()
+    #plt.show()
+
+    buf2 = io.BytesIO()
+    plt.savefig(buf2, format='png')
+    buf2.seek(0)
+    plot_buffers.append(buf2)
+    #plt.close()
 
     # 3. Grafico contributo provider
     contribution_summary.plot(kind='bar', stacked=True, figsize=(14, 8))
@@ -61,9 +74,22 @@ def analyze_performance_data(filename="performance_results_llm.csv"):
     plt.xticks(rotation=45, ha='right')
     plt.legend(title='Provider')
     plt.tight_layout()
-    plt.show()
+    #plt.show()
+
+    buf3 = io.BytesIO()
+    plt.savefig(buf3, format='png')
+    buf3.seek(0)
+    plot_buffers.append(buf3)
+    plt.close()
+
+    print(f"{len(plot_buffers)} grafici salvati in memoria.")
+
+    return plot_buffers
 
 if __name__ == '__main__':
     # Cambia il nome del file a seconda di quale test hai eseguito
-    analyze_performance_data("performance_results_llm.csv")
+    array = analyze_performance_data("performance_results_llm.csv")
     # analyze_performance_data("performance_results_keyword.csv")
+    for i in range(1, 4):
+        with open(f"grafico_{i}.png", 'wb') as f:
+            f.write(array[i-1].getvalue())

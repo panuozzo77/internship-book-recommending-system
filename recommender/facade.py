@@ -38,11 +38,14 @@ class UserRecommenderFacade:
         """Loads the user profile FAISS index into memory."""
         self.user_profile_index.load()
 
-    def recommend_with_content_based(self, user_id: Any, top_n: int = 10) -> List[str]:
+    def recommend_with_content_based(self, user_id: Any, top_n: int = 10, override_history_df: Optional[pd.DataFrame] = None) -> List[str]:
         """
         Generates recommendations for a user based on their personal taste profile.
         """
-        user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
+        if override_history_df is not None:
+            user_history_df = override_history_df
+        else:
+            user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
         if user_history_df.empty:
             return []
 
@@ -59,7 +62,7 @@ class UserRecommenderFacade:
             rerank_context=rerank_context
         )
 
-    def recommend_with_collaborative_filtering(self, user_id: Any, top_n: int = 10) -> List[str]:
+    def recommend_with_collaborative_filtering(self, user_id: Any, top_n: int = 10, override_history_df: Optional[pd.DataFrame] = None) -> List[str]:
         """
         Generates recommendations by finding similar users via the FAISS index.
         """
@@ -67,7 +70,10 @@ class UserRecommenderFacade:
         if target_user_vector is None:
             return []
 
-        user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
+        if override_history_df is not None:
+            user_history_df = override_history_df
+        else:
+            user_history_df = self.interaction_repo.find_interactions_by_user(user_id)
         rerank_context, read_indices = self._prepare_rerank_context(user_history_df)
 
         return self.collaborative_recommender.recommend(
