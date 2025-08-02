@@ -88,8 +88,8 @@ def analyze_performance_data(filename="performance_results_llm.csv"):
 
 if __name__ == '__main__':
     # Cambia il nome del file a seconda di quale test hai eseguito
-    array = analyze_performance_data("performance_results_llm.csv")
+    array = analyze_performance_data("performance_results_llm_others.csv")
     # analyze_performance_data("performance_results_keyword.csv")
     for i in range(1, 4):
-        with open(f"grafico_{i}.png", 'wb') as f:
+        with open(f"grafico_run2_{i}.png", 'wb') as f:
             f.write(array[i-1].getvalue())

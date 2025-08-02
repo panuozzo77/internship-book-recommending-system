@@ -47,7 +47,7 @@ def load_test_cases_from_csv(file_path: str) -> list[dict[str, str]]:
     return test_cases
 
 def main():
-    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config3.json')
+    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config2.json')
 
     # --- 1. SETUP E COMPOSITION ROOT ---
     # Inizializza logger, .env, connessione DB...
@@ -67,8 +67,6 @@ def main():
 
     # Crea le istanze delle dipendenze
     providers = [] #[OpenLibraryProvider()] # Aggiungi qui tutti i tuoi provider
-    
-    '''
 
     rust_scraper_project_dir = os.getenv("RUST_SCRAPER_DIR")
     if rust_scraper_project_dir:
@@ -112,8 +110,8 @@ def main():
             logger.warning(f"La directory dello scraper Rust '{expanded_rust_dir}' non esiste. Goodreads provider disabilitato.")
     else:
         logger.warning("Variabile d'ambiente RUST_SCRAPER_DIR non impostata. Goodreads provider disabilitato.")
+    
     '''
-
     google_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
     if google_api_key:
          providers.append(GoogleBooksProvider(api_key=google_api_key))
@@ -125,7 +123,7 @@ def main():
         return
     
     providers.append(OpenLibraryProvider())
-
+    '''
     repository = MongoBookRepository(db)
     aggregator = MetadataAggregator(providers)
 
@@ -168,15 +166,15 @@ def main():
     # Pulisci il DB prima del test per risultati consistenti (ATTENZIONE: CANCELLA I DATI!)
     # SCOMMENTA SOLO SE STAI USANDO UN DB DI TEST
     # logger.warning("Pulizia delle collezioni di test...")
-    repository.counters_collection.delete_many({})
-    repository.books_collection.delete_many({})
-    repository.authors_collection.delete_many({})
-    repository.series_collection.delete_many({})
-    repository.genres_collection.delete_many({})
-    repository.adder_log_collection.delete_many({})
-    repository.updater_log_collection.delete_many({})
-    repository.scraped_genres_collection.delete_many({})
-    repository.field_sources_log_collection.delete_many({})
+    #repository.counters_collection.delete_many({})
+    #repository.books_collection.delete_many({})
+    #repository.authors_collection.delete_many({})
+    #repository.series_collection.delete_many({})
+    #repository.genres_collection.delete_many({})
+    #repository.adder_log_collection.delete_many({})
+    #repository.updater_log_collection.delete_many({})
+    #repository.scraped_genres_collection.delete_many({})
+    #repository.field_sources_log_collection.delete_many({})
     
     # Inizializza ed esegui il tester
     tester = PerformanceTester(creation_service, update_service)
@@ -198,7 +196,7 @@ def main():
     
     # Determina se l'LLM è stato usato per il nome del file
     llm_suffix = "_llm" if use_llm_mapper else "_keyword"
-    tester.save_results_to_csv(f"performance_results{llm_suffix}_others.csv")
+    tester.save_results_to_csv(f"performance_results{llm_suffix}_gr_part2.csv")
 
     print("-" * 60)
     logger.info("Operazioni di test completate.")

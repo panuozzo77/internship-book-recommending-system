@@ -48,7 +48,11 @@ class ModelBuilder:
         
         # --- Fase 2: Vettorizzazione ---
         self.logger.info(f"Vectorizing content into {self.max_vector_size}-dimensional space...")
-        vectorizer = TfidfVectorizer(max_features=self.max_vector_size, stop_words='english')
+        
+        custom_stop_words = list(TfidfVectorizer(stop_words='english').get_stop_words())
+        custom_stop_words.extend(['book', 'read', 'author', 'story', 'novel', 'series', 'bestseller', 'edition', 'published'])
+        
+        vectorizer = TfidfVectorizer(max_features=self.max_vector_size, stop_words=custom_stop_words)
         tfidf_matrix = vectorizer.fit_transform(df_processed['content'])
 
         actual_vector_size = tfidf_matrix.shape[1]

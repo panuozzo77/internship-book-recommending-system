@@ -2,7 +2,7 @@
 from typing import Final
 
 # --- Model Configuration ---
-VECTOR_SIZE: Final[int] = 500
+VECTOR_SIZE: Final[int] = 4500
 ANNOY_METRIC: Final[str] = 'angular' # Cosine distance
 ANNOY_N_TREES: Final[int] = 50
 
