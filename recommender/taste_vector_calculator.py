@@ -44,48 +44,32 @@ class TasteVectorCalculator:
             self.logger.warning("Cannot calculate taste vector from empty history.")
             return None
 
-        profile_accumulator = np.zeros(self.model.vector_size, dtype=np.float32)
-        total_weight_magnitude = 0.0
+        liked_book_vectors = []
         
-        # Get a set of valid book indices from the user's history
-        valid_book_indices = set()
-
+        # Itera sulle righe della cronologia utente
         for row in user_history_df.itertuples():
-            # Explicitly access attributes by name to help the type checker
             title = getattr(row, 'book_title', None)
             rating = getattr(row, 'rating', None)
 
             if not title or rating is None:
                 continue
 
-            book_idx = self.model.title_to_idx.get(title)
-            if book_idx is None:
+            # --- MODIFICA CHIAVE: Considera solo i libri che sono piaciuti molto ---
+            if float(rating) < 4.0:
                 continue
-            
-            valid_book_indices.add(book_idx)
-            book_vector = self.model.index.get_item_vector(book_idx)
-            
-            # Calculate weight based on rating (from -1 to +1, with 3 as neutral)
-            weight = (float(rating) - 3.0) / 2.0
-            
-            profile_accumulator += np.array(book_vector, dtype=np.float32) * weight
-            total_weight_magnitude += abs(weight)
+            # --- FINE MODIFICA ---
 
-        if not valid_book_indices:
-            self.logger.error("None of the books in the user's history were found in the model.")
+            book_idx = self.model.title_to_idx.get(title)
+            if book_idx is not None:
+                # Aggiungi il vettore del libro piaciuto alla lista
+                liked_book_vectors.append(self.model.index.get_item_vector(book_idx))
+        
+        if not liked_book_vectors:
+            self.logger.warning(f"User {getattr(user_history_df, 'user_id', ['N/A'])[0]} has no highly-rated books. Cannot create profile.")
             return None
 
-        # If all ratings were neutral (3.0), the total weight is zero.
-        # In this case, we fall back to a simple, unweighted average.
-        if total_weight_magnitude == 0:
-            self.logger.warning("User profile is neutral. Creating profile based on a simple average (fallback).")
-            
-            if not valid_book_indices: return None # Should not happen, but for safety
-
-            read_vectors = [self.model.index.get_item_vector(i) for i in valid_book_indices]
-            final_profile = np.mean(read_vectors, axis=0, dtype=np.float32)
-        else:
-            final_profile = profile_accumulator / total_weight_magnitude
+        # Il profilo finale è la semplice media dei vettori dei soli libri piaciuti.
+        final_profile = np.mean(liked_book_vectors, axis=0, dtype=np.float32)
         
-        self.logger.info(f"Taste vector calculated successfully based on {len(valid_book_indices)} books.")
+        self.logger.info(f"Taste vector calculated based on {len(liked_book_vectors)} liked books.")
         return final_profile

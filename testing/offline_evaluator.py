@@ -33,7 +33,8 @@ class OfflineEvaluator:
         interaction_repo: UserInteractionRepository,
         k: int = 10,
         min_reviews: int = 10,
-        holdout_size: int = 2
+        holdout_size: int = 2,
+        min_high_ratings_for_split: int = 4
     ):
         """
         Initializes the evaluator.
@@ -49,6 +50,9 @@ class OfflineEvaluator:
         self.k = k
         self.min_reviews = min_reviews
         self.holdout_size = holdout_size
+        if min_high_ratings_for_split <= holdout_size:
+            raise ValueError("min_high_ratings_for_split must be greater than holdout_size")
+        self.min_high_ratings_for_split = min_high_ratings_for_split
         self.logger = LoggerManager().get_logger()
 
     def _select_test_users(self, sample_size: int = 1000) -> List[str]:
@@ -71,11 +75,10 @@ class OfflineEvaluator:
         """
         high_ratings_df = history_df[history_df['rating'] >= 4.0]
 
-        if len(high_ratings_df) <= self.holdout_size:
-            # Not enough highly-rated items to create a hold-out set
+        if len(high_ratings_df) < self.min_high_ratings_for_split:
             return history_df, set()
 
-        holdout_df = high_ratings_df.sample(n=self.holdout_size)
+        holdout_df = high_ratings_df.sample(n=self.holdout_size, random_state=42)
         training_df = history_df.drop(holdout_df.index)
         
         holdout_set = set(holdout_df['book_title'])
@@ -194,6 +197,7 @@ def main():
     user_profile_index = UserProfileIndex(vector_size=model.vector_size, index_path=user_index_path)
 
     rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
+    #rerankers = None
     content_recommender = ContentBasedRecommender(model, rerankers=rerankers)
     collaborative_recommender = CollaborativeFilteringRecommender(model, user_profile_index, rerankers=rerankers)
     taste_vector_calculator = TasteVectorCalculator(model)
@@ -214,9 +218,10 @@ def main():
     evaluator = OfflineEvaluator(
         facade=recommender_facade,
         interaction_repo=interaction_repo,
-        k=10,            # Recommend 10 items
+        k=20,            # Recommend 10 items
         min_reviews=20,  # User must have at least 20 reviews
-        holdout_size=5   # Hide 5 books for testing
+        holdout_size=5,   # Hide 5 books for testing
+        min_high_ratings_for_split=10
     )
     evaluator.run_full_evaluation(sample_size=1000) # Test on a sample of 1000 users
 

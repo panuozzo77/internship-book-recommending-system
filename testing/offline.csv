@@ -1,0 +1,113 @@
+--- OFFLINE EVALUATION COMPLETE ---
+--- test con nuova _split_history e min_high_ratings_for_split
+Entrambi i ReRanker
+Evaluated on 922 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.004393       0.014317
+   Avg Recall@k       0.017570       0.057267
+
+Catalog Coverage: 0.50% (7670 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+--- test con nuova _split_history e min_high_ratings_for_split
+Solo con PageCountReRanker
+Evaluated on 929 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.002853       0.016308
+   Avg Recall@k       0.011410       0.065231
+
+Catalog Coverage: 1.01% (15443 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+--- Primo test con nuova _split_history e min_high_ratings_for_split
+Solo con GenrePreferenceReRanker
+Evaluated on 940 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.004681       0.014043
+   Avg Recall@k       0.018723       0.056170
+
+Catalog Coverage: 0.50% (7622 unique items recommended out of 1521962)
+-----------------------------------
+--- I TEST IN BASSO SONO STATI CALCOLATI CON VECCHIA _split_history, 
+--- I test sopra richiedono un numero minimo di recensioni positive doppie a quello delle recensioni di hold-out
+--- OFFLINE EVALUATION COMPLETE ---
+Solo con GenrePreferenceReRanker
+Evaluated on 985 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.004772       0.014416
+   Avg Recall@k       0.019086       0.057665
+
+Catalog Coverage: 0.53% (8119 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Solo con PageCountReRanker
+Evaluated on 979 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.002503       0.015577
+   Avg Recall@k       0.010010       0.062308
+
+Catalog Coverage: 1.06% (16077 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Solo con PageCountReRanker
+Evaluated on 977 users (k=10)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.003378       0.024156
+   Avg Recall@k       0.006755       0.048311
+
+Catalog Coverage: 0.59% (8933 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Solo con GenrePreferenceReRanker
+Evaluated on 976 users (k=10)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.005328       0.021311
+   Avg Recall@k       0.010656       0.042623
+
+Catalog Coverage: 0.33% (4984 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Senza utilizzo di alcun ReRanker
+Evaluated on 978 users (k=10)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.003374       0.022597
+   Avg Recall@k       0.006748       0.045194
+
+Catalog Coverage: 0.62% (9361 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Modifica al taste_vector_calculator
+Evaluated on 980 users (k=10)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.006122       0.018163
+   Avg Recall@k       0.012245       0.036327
+
+Catalog Coverage: 0.33% (4980 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+Modifica al numero di vettori (da 500 a 4500)
+Evaluated on 980 users (k=10)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.003980       0.020408
+   Avg Recall@k       0.007959       0.040816
+
+Catalog Coverage: 0.41% (6177 unique items recommended out of 1521962)
+
+-----------------------------------
+Valori di Partenza
+--- OFFLINE EVALUATION COMPLETE ---
+Evaluated on 978 users (k=10)
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.001022       0.021881
+   Avg Recall@k       0.002045       0.043763
+Catalog Coverage: 0.26% (3972 unique items recommended out of 1521963)
