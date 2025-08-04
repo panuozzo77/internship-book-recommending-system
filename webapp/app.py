@@ -307,7 +307,7 @@ def create_app(app_config: Dict[str, Any]):
             return redirect(url_for('login'))
 
         db = get_db()
-        if not db:
+        if db is None:
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
 
@@ -336,7 +336,7 @@ def create_app(app_config: Dict[str, Any]):
             return redirect(url_for('login'))
 
         db = get_db()
-        if not db:
+        if db is None:
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
             

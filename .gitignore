@@ -2,6 +2,7 @@
 recommendation/
 scrapers/
 *.png
+recommender_v2/artifacts
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

@@ -112,7 +112,7 @@ class BookRepository:
         ]
         
         cursor = self.db['books'].aggregate(pipeline)
-        top_shelves = {doc['_id'] for doc in cursor} if cursor else set()
+        top_shelves = {doc['_id'] for doc in cursor} if cursor is not None else set()
         self.logger.info(f"Found {len(top_shelves)} unique top shelves.")
         return top_shelves
     
@@ -219,6 +219,30 @@ class UserInteractionRepository:
         self.db = db_connection.get_database()
         self.collection_name = collection_name
         self.logger = LoggerManager().get_logger()
+
+    def find_all_interactions(self) -> pd.DataFrame:
+        """
+        Fetches all user-book interactions (user_id, book_id) from the database.
+        """
+        self.logger.info(f"Fetching all interactions from collection '{self.collection_name}'...")
+        query = {}
+        projection = {
+            '_id': 0,
+            'user_id': 1,
+            'book_id': 1
+        }
+        cursor = self.db[self.collection_name].find(query, projection)
+        df = pd.DataFrame(list(cursor))
+
+        if df.empty:
+            self.logger.warning("No interactions found in the database.")
+        else:
+            self.logger.info(f"Successfully fetched {len(df)} total interactions.")
+            # Drop rows with missing user_id or book_id to ensure data integrity
+            df.dropna(subset=['user_id', 'book_id'], inplace=True)
+            self.logger.info(f"Returning {len(df)} interactions after dropping NaNs.")
+
+        return df
 
     def find_interactions_by_user(self, user_id: Any) -> pd.DataFrame:
         """
