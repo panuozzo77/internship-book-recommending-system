@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Protocol
+from typing import List, Dict, Any, Optional, Protocol, cast, Literal
 
 from annoy import AnnoyIndex
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -49,7 +49,8 @@ class ModelBuilder:
         # --- Fase 2: Vettorizzazione ---
         self.logger.info(f"Vectorizing content into {self.max_vector_size}-dimensional space...")
         
-        custom_stop_words = list(TfidfVectorizer(stop_words='english').get_stop_words())
+        stop_words_english = TfidfVectorizer(stop_words='english').get_stop_words()
+        custom_stop_words = list(stop_words_english) if stop_words_english is not None else []
         custom_stop_words.extend(['book', 'read', 'author', 'story', 'novel', 'series', 'bestseller', 'edition', 'published'])
         
         vectorizer = TfidfVectorizer(max_features=self.max_vector_size, stop_words=custom_stop_words)
@@ -63,9 +64,9 @@ class ModelBuilder:
         
         # --- Fase 3: Costruzione Indice Annoy ---
         self.logger.info("Building Annoy index...")
-        annoy_index = AnnoyIndex(actual_vector_size, config.ANNOY_METRIC)
+        annoy_index = AnnoyIndex(actual_vector_size, cast(Literal['angular', 'euclidean', 'manhattan', 'hamming', 'dot'], config.ANNOY_METRIC))
         for i in range(tfidf_matrix.shape[0]):
-            vector = tfidf_matrix[i].toarray()[0]
+            vector = tfidf_matrix[i:i+1].toarray()[0]
             annoy_index.add_item(i, vector)
         
         annoy_index.build(self.n_trees)
@@ -79,7 +80,7 @@ class ModelBuilder:
             vector_size=actual_vector_size,
             vectorizer=vectorizer,
             index=annoy_index,
-            book_metadata=df_processed[['book_title', 'page_count', 'key_genres']],
+            book_metadata=df_processed[['book_id', 'book_title', 'page_count', 'key_genres']],
             title_to_idx=title_to_idx,
             idx_to_title=idx_to_title
         )
@@ -138,6 +139,8 @@ class ModelPersister:
 
     def _get_model_filepath(self, version: str = "1.0") -> str:
         """Costruisce il percorso completo del file del modello."""
+        if not self.processed_data_dir:
+            raise ValueError("processed_data_dir is not set")
         filename = config.MODEL_FILENAME_TEMPLATE.format(version=version)
         return os.path.join(self.processed_data_dir, filename)
 
@@ -180,7 +183,7 @@ class ModelPersister:
             self.logger.error(f"Annoy index file not found at {annoy_path}")
             return None
             
-        annoy_index = AnnoyIndex(loaded_data.vector_size, config.ANNOY_METRIC)
+        annoy_index = AnnoyIndex(loaded_data.vector_size, cast(Literal['angular', 'euclidean', 'manhattan', 'hamming', 'dot'], config.ANNOY_METRIC))
         annoy_index.load(annoy_path)
         self.logger.info("Annoy index loaded successfully.")
         
