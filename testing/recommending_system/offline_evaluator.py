@@ -196,10 +196,10 @@ def main():
     user_index_path = os.path.join(index_dir, 'user_profile_index.faiss')
     user_profile_index = UserProfileIndex(vector_size=model.vector_size, index_path=user_index_path)
 
-    rerankers = [PageCountReRanker()]
+    lrer = [PageCountReRanker()]
     #rerankers = None
-    content_recommender = ContentBasedRecommender(model, rerankers=rerankers)
-    collaborative_recommender = CollaborativeFilteringRecommender(model, user_profile_index, user_profile_repo, rerankers=rerankers)
+    content_recommender = ContentBasedRecommender(model, rerankers=lrer)
+    collaborative_recommender = CollaborativeFilteringRecommender(model, user_profile_index, rerankers=lrer)
     taste_vector_calculator = TasteVectorCalculator(model)
 
     # 4. Instantiate the Facade

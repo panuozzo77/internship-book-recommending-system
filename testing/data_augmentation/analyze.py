@@ -123,8 +123,8 @@ def analyze_book_data(file_goodreads, file_others):
 
 
 # Esempio di utilizzo
-file_goodreads = 'performance_results_llm.csv'  # Sostituisci con il tuo filename
-file_others = 'performance_results_llm_others.csv'  # Sostituisci con il tuo filename
+file_goodreads = 'testing/data_augmentation/output/run2_gr.csv'  # Sostituisci con il tuo filename
+file_others = 'testing/data_augmentation/output/run2_gr+llm.csv'  # Sostituisci con il tuo filename
 
 results = analyze_book_data(file_goodreads, file_others)
 

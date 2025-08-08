@@ -1,4 +1,58 @@
 --- OFFLINE EVALUATION COMPLETE ---
+Evaluated on 936 users (k=20)
+Indice FAISS degli utenti con spazio vettoriale di 4500
+Indice ANNOY dei libri con spazio vettoriale di 4500
+rerankers = [PageCountReRanker()]
+
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.003686       0.018590
+   Avg Recall@k       0.014744       0.074359
+
+Catalog Coverage: 0.85% (12998 unique items recommended out of 1521962)
+-----------------------------------
+
+--- OFFLINE EVALUATION COMPLETE ---
+# --- Collaborative Filtering Configuration ---
+COLLABORATIVE_N_NEIGHBORS: Final[int] = 35 # Number of similar users to consider
+COLLABORATIVE_MIN_COMMON_BOOKS: Final[int] = 3 # Min books in common to be a valid neighbor
+COLLABORATIVE_MIN_VALID_NEIGHBORS: Final[int] = 0
+rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
+Evaluated on 912 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.005702       0.015296
+   Avg Recall@k       0.022807       0.061184
+
+Catalog Coverage: 0.46% (7023 unique items recommended out of 1521962)
+-----------------------------------
+--- OFFLINE EVALUATION COMPLETE ---
+# --- Collaborative Filtering Configuration ---
+COLLABORATIVE_N_NEIGHBORS: Final[int] = 25 # Number of similar users to consider
+COLLABORATIVE_MIN_COMMON_BOOKS: Final[int] = 3 # Min books in common to be a valid neighbor
+COLLABORATIVE_MIN_VALID_NEIGHBORS: Final[int] = 25
+Evaluated on 937 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.005390       0.013607
+   Avg Recall@k       0.021558       0.054429
+
+Catalog Coverage: 0.48% (7342 unique items recommended out of 1521962)
+--- OFFLINE EVALUATION COMPLETE ---
+COLLABORATIVE_N_NEIGHBORS: Final[int] = 25 # Number of similar users to consider
+COLLABORATIVE_MIN_COMMON_BOOKS: Final[int] = 3 # Min books in common to be a valid neighbor
+COLLABORATIVE_MIN_VALID_NEIGHBORS: Final[int] = 15
+rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
+Evaluated on 934 users (k=20)
+
+         Metric  Content-Based  Collaborative
+Avg Precision@k       0.004336       0.016542
+   Avg Recall@k       0.017345       0.066167
+
+Catalog Coverage: 0.48% (7278 unique items recommended out of 1521962)
+-----------------------------------
+
+--- OFFLINE EVALUATION COMPLETE ---
 --- test con nuova _split_history e min_high_ratings_for_split
 Entrambi i ReRanker
 Evaluated on 922 users (k=20)

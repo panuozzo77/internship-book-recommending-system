@@ -197,7 +197,7 @@ class BookUpdateService:
             new_value = new_metadata.get(key)
             if new_value and new_value != old_doc.get(key):
                 # Logica di aggiornamento selettiva
-                if key in ["description", "page_count", "publisher", "publication_year", "popular_shelves", "genres", "series"]:
+                if key in ["description", "page_count", "publisher", "publication_year", "popular_shelves", "series"]:
                     payload[key] = new_value
         
         # Rinomina publication_year in year se presente

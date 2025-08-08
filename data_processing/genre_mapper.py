@@ -23,10 +23,10 @@ GENRE_KEYWORD_MAP = {
     "fantasy, paranormal": {"fantasy", "paranormal", "supernatural", "vampires", "magic", "urban-fantasy"},
     "history, historical fiction, biography": {"history", "historical", "biography", "memoir", "historical-fiction", "autobiography"},
     "romance": {"romance", "contemporary-romance", "historical-romance"},
-    "young-adult": {"young-adult", "ya"},
+    "young-adult": {"young-adult", "ya", "teenager", "adolescent", "youth", "teen"},
     "children": {"children", "kids", "picture-books", "juvenile"},
-    "comics, graphic": {"comics", "graphic-novels", "manga", "sequential-art"},
-    "non-fiction": {"non-fiction", "nonfiction", "science", "self-help", "business", "psychology", "health", "philosophy", "travel", "cooking"},
+    "comics, graphic": {"comics", "graphic-novels", "manga", "sequential-art", "art", "graphic"},
+    "non-fiction": {"non-fiction", "nonfiction", "science", "self-help", "business", "psychology", "health", "philosophy", "travel", "cooking", "guide", "manual"},
     "poetry": {"poetry", "poems"},
     # "fiction" è un caso speciale: potrebbe essere un fallback
     "fiction": {"fiction", "contemporary", "literature", "literary-fiction", "adult-fiction", "dystopian", "sci-fi", "science-fiction", "adventure"},
@@ -100,6 +100,30 @@ class LLMGenreMapper:
             "Your response must be only the JSON object, without any additional text or markdown."
         )
 
+    def _find_closest_predefined_genre(self, llm_genre: str) -> Optional[str]:
+        """
+        Trova la categoria predefinita più vicina a un genere restituito dall'LLM.
+        Prima controlla la corrispondenza esatta, poi usa GENRE_KEYWORD_MAP per una mappatura flessibile.
+        """
+        llm_genre_lower = llm_genre.lower().strip()
+
+        # 1. Controllo per corrispondenza esatta (caso più semplice)
+        if llm_genre_lower in PREDEFINED_GENRES_KEYS:
+            return llm_genre_lower
+
+        # 2. Mappatura flessibile basata su parole chiave
+        # Pulisce e divide il genere in parole (es. "biography & autobiography" -> ["biography", "autobiography"])
+        words_in_llm_genre = set(re.split(r'[\s,&/]+', llm_genre_lower))
+        
+        for predefined_category, keywords in GENRE_KEYWORD_MAP.items():
+            # Controlla se c'è un'intersezione tra le parole del genere LLM e le parole chiave della categoria
+            if not words_in_llm_genre.isdisjoint(keywords):
+                self.logger.debug(f"Mapped LLM genre '{llm_genre}' to '{predefined_category}' based on keyword overlap.")
+                return predefined_category
+
+        # 3. Nessuna mappatura trovata
+        return None
+
     def map_genres(self, title: str, authors: List[str], description: str, scraped_genres: List[str]) -> Optional[Dict[str, int]]:
         """
         Interroga l'LLM di Ollama per mappare i generi, usando i dettagli del libro.
@@ -130,15 +154,35 @@ class LLMGenreMapper:
             # Pulisce la risposta per assicurarsi che sia solo JSON valido
             json_response_str = response_text.strip().replace("```json", "").replace("```", "")
             
-            mapped_genres = json.loads(json_response_str)
+            mapped_genres_from_llm = json.loads(json_response_str)
             
             # Valida che il risultato sia nel formato atteso
-            if not isinstance(mapped_genres, dict) or not all(isinstance(k, str) and v == 1 for k, v in mapped_genres.items()):
-                self.logger.warning(f"Ollama response is not in the expected format: {mapped_genres}")
+            if not isinstance(mapped_genres_from_llm, dict) or not all(isinstance(k, str) and v == 1 for k, v in mapped_genres_from_llm.items()):
+                self.logger.warning(f"Ollama response is not in the expected format: {mapped_genres_from_llm}")
                 return None
 
-            self.logger.info(f"Ollama mapped genres: {list(mapped_genres.keys())}")
-            return mapped_genres
+            self.logger.info(f"Ollama mapped genres: {list(mapped_genres_from_llm.keys())}")
+            
+            final_mapped_genres: Set[str] = set()
+            unmappable_genres = []
+            
+            for llm_genre, value in mapped_genres_from_llm.items():
+                if value != 1:
+                    self.logger.warning(f"LLM returned genre '{llm_genre}' with invalid value '{value}'. Skipping.")
+                    continue
+                
+                matched_category = self._find_closest_predefined_genre(llm_genre)
+                if matched_category:
+                    final_mapped_genres.add(matched_category)
+                else:
+                    unmappable_genres.append(llm_genre)
+            
+            if not final_mapped_genres:
+                self.logger.info("No valid genres were mapped after validation.")
+                return {}
+            
+            self.logger.info(f"Ollama mapped and validated genres: {list(final_mapped_genres)}")
+            return {genre: 1 for genre in final_mapped_genres}
 
         except requests.Timeout:
             self.logger.error(f"Ollama request timed out after 60 seconds.")
@@ -149,3 +193,6 @@ class LLMGenreMapper:
         except json.JSONDecodeError as e:
             self.logger.error(f"Failed to decode JSON from Ollama response: {e}\nResponse text: {response_text}")
             return None
+        
+if __name__ == '__main__':
+    print(LLMGenreMapper('false')._find_closest_predefined_genre('non-fictin'))
