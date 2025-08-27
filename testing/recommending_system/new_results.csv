@@ -1,0 +1,63 @@
+======================================================================
+ENHANCED OFFLINE EVALUATION COMPLETE
+======================================================================
+rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
+Evaluated on 188 users (k=10)
+Split Method: RANDOM
+Temporal Data Available: True
+
+BASIC METRICS:
+----------------------------------------
+         Metric  Content-Based  Collaborative
+Avg Precision@k          0.003          0.013
+   Avg Recall@k          0.009          0.043
+
+GENRE ALIGNMENT ANALYSIS:
+----------------------------------------
+
+Content-Based Metrics:
+  Genre Overlap: 0.424
+  Genre Diversity: 221.9
+  Popularity Bias: 0.059
+  Genre Match Score: 0.998
+
+Collaborative Filtering Metrics:
+  Genre Overlap: 0.454
+  Genre Diversity: 231.0
+  Popularity Bias: 0.053
+  Genre Match Score: 1.000
+
+Catalog Coverage: 0.15% (2236 unique items)
+----------------------------------------------------------------------
+
+======================================================================
+ENHANCED OFFLINE EVALUATION COMPLETE
+======================================================================
+rerankers = [GenrePreferenceReRanker(), PageCountReRanker()]
+Evaluated on 190 users (k=10)
+Split Method: TEMPORAL
+Temporal Data Available: True
+
+BASIC METRICS:
+----------------------------------------
+         Metric  Content-Based  Collaborative
+Avg Precision@k          0.005          0.022
+   Avg Recall@k          0.018          0.072
+
+GENRE ALIGNMENT ANALYSIS:
+----------------------------------------
+
+Content-Based Metrics:
+  Genre Overlap: 0.413
+  Genre Diversity: 219.2
+  Popularity Bias: 0.059
+  Genre Match Score: 0.999
+
+Collaborative Filtering Metrics:
+  Genre Overlap: 0.441
+  Genre Diversity: 224.0
+  Popularity Bias: 0.054
+  Genre Match Score: 1.000
+
+Catalog Coverage: 0.15% (2345 unique items)
+----------------------------------------------------------------------
