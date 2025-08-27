@@ -87,9 +87,12 @@ class FeatureAggregator:
             # --- MODIFICATO ---
             # Estrae sia i generi chiave sia la stringa di tag pesati
             key_genres, tags_string = self._extract_genres_and_create_weighted_string(book, top_shelves)
+
+            clean_genres_str = " ".join(list(key_genres))
             
             # Combina tutto in un'unica stringa di "contenuto"
-            content = (f"{title} " * 3) + f"{description} {tags_string}"
+            #content = (f"{title} " * 3) + f"{description} {tags_string}"
+            content = (f"{title} " * 5) + (f"{clean_genres_str} " * 10) + f" {description} " + (f"{tags_string} " * 3)
             
             processed_data.append({
                 'book_id': book.get('book_id'),

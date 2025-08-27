@@ -112,7 +112,7 @@ class BookRepository:
         ]
         
         cursor = self.db['books'].aggregate(pipeline)
-        top_shelves = {doc['_id'] for doc in cursor} if cursor else set()
+        top_shelves = {doc['_id'] for doc in cursor} if cursor is not None else set()
         self.logger.info(f"Found {len(top_shelves)} unique top shelves.")
         return top_shelves
     
@@ -220,6 +220,30 @@ class UserInteractionRepository:
         self.collection_name = collection_name
         self.logger = LoggerManager().get_logger()
 
+    def find_all_interactions(self) -> pd.DataFrame:
+        """
+        Fetches all user-book interactions (user_id, book_id) from the database.
+        """
+        self.logger.info(f"Fetching all interactions from collection '{self.collection_name}'...")
+        query = {}
+        projection = {
+            '_id': 0,
+            'user_id': 1,
+            'book_id': 1
+        }
+        cursor = self.db[self.collection_name].find(query, projection)
+        df = pd.DataFrame(list(cursor))
+
+        if df.empty:
+            self.logger.warning("No interactions found in the database.")
+        else:
+            self.logger.info(f"Successfully fetched {len(df)} total interactions.")
+            # Drop rows with missing user_id or book_id to ensure data integrity
+            df.dropna(subset=['user_id', 'book_id'], inplace=True)
+            self.logger.info(f"Returning {len(df)} interactions after dropping NaNs.")
+
+        return df
+
     def find_interactions_by_user(self, user_id: Any) -> pd.DataFrame:
         """
         Trova tutti i libri con cui un utente ha interagito.
@@ -304,6 +328,78 @@ class UserInteractionRepository:
         
         return df
 
+    def find_neighbors_by_book_overlap(
+        self,
+        target_user_id: Any,
+        liked_book_ids: List[str],
+        min_common_books: int,
+        limit: int
+    ) -> List[str]:
+        """
+        Trova gli ID degli utenti che hanno il maggior numero di libri in comune
+        con la lista dei libri preferiti dell'utente target.
+
+        Args:
+            target_user_id: L'ID dell'utente per cui si cercano i vicini, da escludere.
+            liked_book_ids: Lista dei book_id che sono piaciuti all'utente target.
+            min_common_books: Numero minimo di libri in comune richiesto.
+            limit: Numero massimo di vicini da restituire.
+
+        Returns:
+            Una lista di user_id dei vicini più rilevanti.
+        """
+        if not liked_book_ids:
+            return []
+            
+        self.logger.info(f"Finding neighbors by book overlap for user {target_user_id}...")
+        
+        pipeline = [
+            # Fase 1: Trova le recensioni dei libri che sono piaciuti all'utente target, escludendo l'utente stesso.
+            {
+                '$match': {
+                    'book_id': {'$in': liked_book_ids},
+                    'user_id': {'$ne': target_user_id},
+                    'rating': {'$gte': 4.0} # Consideriamo solo i vicini a cui sono piaciuti questi libri
+                }
+            },
+            # Fase 2: Raggruppa per utente e conta i libri in comune.
+            {
+                '$group': {
+                    '_id': '$user_id',
+                    'common_books_count': {'$sum': 1}
+                }
+            },
+            # Fase 3: Filtra per chi ha almeno il minimo richiesto di libri in comune.
+            {
+                '$match': {
+                    'common_books_count': {'$gte': min_common_books}
+                }
+            },
+            # Fase 4: Ordina per trovare i migliori vicini (quelli con più libri in comune).
+            {
+                '$sort': {
+                    'common_books_count': -1
+                }
+            },
+            # Fase 5: Limita il numero di risultati.
+            {
+                '$limit': limit
+            },
+            # Fase 6: Proietta solo gli ID.
+            {
+                '$project': {
+                    'user_id': '$_id',
+                    '_id': 0
+                }
+            }
+        ]
+        
+        cursor = self.db[self.collection_name].aggregate(pipeline)
+        neighbor_ids = [doc['user_id'] for doc in cursor]
+        
+        self.logger.info(f"Found {len(neighbor_ids)} neighbors via book overlap.")
+        return neighbor_ids
+    
 class UserRepository:
     """
     Manages user data persistence in MongoDB, including authentication.

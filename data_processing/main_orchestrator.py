@@ -2,6 +2,7 @@
 
 import os
 import logging
+import csv
 from dotenv import load_dotenv
 import subprocess
 
@@ -21,15 +22,38 @@ from data_processing.providers.cli_book_provider import (
     parse_goodreads_rust_scraper_output
 )
 # Aggiungi qui gli altri tuoi provider (es. Goodreads, Calibre)
+from testing.performance_tester import PerformanceTester
+
+def load_test_cases_from_csv(file_path: str) -> list[dict[str, str]]:
+    """
+    Loads test cases from a CSV file.
+    The CSV is expected to have 'title' and 'author' columns.
+    """
+    test_cases = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Ensure the keys match the expected format
+                if 'title' in row and 'author' in row:
+                    test_cases.append({
+                        "title": row['title'],
+                        "author_name": row['author']
+                    })
+    except FileNotFoundError:
+        logging.error(f"Test case file not found: {file_path}")
+    except Exception as e:
+        logging.error(f"Error reading test case file {file_path}: {e}")
+    return test_cases
 
 def main():
-    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config.json')
+    PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config4.json')
 
     # --- 1. SETUP E COMPOSITION ROOT ---
     # Inizializza logger, .env, connessione DB...
     logger_manager = LoggerManager()
     os.makedirs("logs", exist_ok=True)
-    logger_manager.setup_logger(name="BookOrchestratorApp", log_file="logs/orchestrator.log", level="INFO")
+    logger_manager.setup_logger(name="BookOrchestratorApp", log_file="logs/orchestrator_test_db_original.log", level="INFO")
     logger = logger_manager.get_logger()
     
     load_dotenv()
@@ -43,7 +67,7 @@ def main():
 
     # Crea le istanze delle dipendenze
     providers = [] #[OpenLibraryProvider()] # Aggiungi qui tutti i tuoi provider
-    
+
     rust_scraper_project_dir = os.getenv("RUST_SCRAPER_DIR")
     if rust_scraper_project_dir:
         # Espandi il percorso (es. converte ~ in /home/user)
@@ -73,7 +97,7 @@ def main():
                         cwd=expanded_rust_dir,
                         
                         # Timeout generoso per la prima compilazione
-                        timeout=120 
+                        timeout=120
                     )
                     providers.append(goodreads_provider)
                     logger.info(f"Provider 'GoodreadsRustScraper' configurato per essere eseguito in: {expanded_rust_dir}")
@@ -86,7 +110,7 @@ def main():
             logger.warning(f"La directory dello scraper Rust '{expanded_rust_dir}' non esiste. Goodreads provider disabilitato.")
     else:
         logger.warning("Variabile d'ambiente RUST_SCRAPER_DIR non impostata. Goodreads provider disabilitato.")
-
+    '''
     google_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
     if google_api_key:
          providers.append(GoogleBooksProvider(api_key=google_api_key))
@@ -98,7 +122,7 @@ def main():
         return
     
     providers.append(OpenLibraryProvider())
-
+    '''
     repository = MongoBookRepository(db)
     aggregator = MetadataAggregator(providers)
 
@@ -120,44 +144,61 @@ def main():
         ollama_host=ollama_host
     )
     
-    logger.info("Sistema inizializzato. Avvio delle operazioni dimostrative.")
+    logger.info("Sistema inizializzato. Avvio delle operazioni di test.")
     print("-" * 60)
 
-    # --- 2. DIMOSTRAZIONE DI UTILIZZO ---
-
-    # A. Aggiungere un nuovo libro
-    print(">>> CASO 1: Aggiungere un libro non esistente...")
-    #result_add = creation_service.add_new_book(title="la casa dei silenzi", author_name="Donato Carrisi")
-    book_id_to_update = 'add_book_5'
-    result_update = update_service.update_book(identifier={"book_id": book_id_to_update})
-    print(f"Esito: {result_update}\n")
+    # --- 2. ESECUZIONE DEI TEST DI PERFORMANCE ---
     
-    '''
-    # B. Tentare di aggiungere un duplicato
-    print(">>> CASO 2: Tentare di aggiungere un duplicato...")
-    result_dup = creation_service.add_new_book(title="The Lord of the Rings", author_name="J.R.R. Tolkien")
-    print(f"Esito: {result_dup}\n")
+    # Carica i casi di test dal file CSV generato dallo scraper
+    test_cases = load_test_cases_from_csv("new_releases.csv")
 
-    # C. Aggiornare un libro tramite ID
-    if result_add.get("status") == "SUCCESS":
-        book_id_to_update = result_add["book_id"]
-        print(f">>> CASO 3: Aggiornare il libro appena creato tramite ID ({book_id_to_update})...")
-        result_update_id = update_service.update_book(identifier={"book_id": book_id_to_update})
-        print(f"Esito: {result_update_id}\n")
+    # Aggiungi alcuni casi di test manuali per scenari specifici
+    #test_cases.extend([
+    #    {"title": "Libro Inesistente XYZ", "author_name": "Autore Fantasma"}, # Caso di fallimento
+    #    {"title": "The Lord of the Rings", "author_name": "J.R.R. Tolkien"}, # Probabile duplicato se già nel DB
+    #])
 
-    # D. Aggiornare un libro tramite titolo e autore
-    print(">>> CASO 4: Aggiornare un libro tramite titolo e autore...")
-    result_update_title = update_service.update_book(identifier={"title": "The Lord of the Rings", "author": "J.R.R. Tolkien"})
-    print(f"Esito: {result_update_title}\n")
+    if not test_cases:
+        logger.critical("Nessun caso di test caricato. Interruzione.")
+        return
+
+    # Pulisci il DB prima del test per risultati consistenti (ATTENZIONE: CANCELLA I DATI!)
+    # SCOMMENTA SOLO SE STAI USANDO UN DB DI TEST
+    logger.warning("Pulizia delle collezioni di test...")
+    repository.counters_collection.delete_many({})
+    repository.books_collection.delete_many({})
+    repository.authors_collection.delete_many({})
+    repository.series_collection.delete_many({})
+    repository.genres_collection.delete_many({})
+    repository.adder_log_collection.delete_many({})
+    repository.updater_log_collection.delete_many({})
+    repository.scraped_genres_collection.delete_many({})
+    repository.field_sources_log_collection.delete_many({})
     
-    # E. Tentare di aggiornare un libro non esistente
-    print(">>> CASO 5: Tentare di aggiornare un libro non esistente...")
-    result_update_fail = update_service.update_book(identifier={"book_id": "non_existent_id_123"})
-    print(f"Esito: {result_update_fail}\n")
+    # Inizializza ed esegui il tester
+    tester = PerformanceTester(creation_service, update_service)
+    
+    # Esegui la suite di creazione
+    tester.run_creation_test_suite(test_cases)
+    
+    # Estrai gli ID dei libri creati con successo per la suite di aggiornamento
+    created_ids = [
+        res['book_id'] for res in tester.results
+        if res['test_type'] == 'creation' and res['status'] == 'SUCCESS' and res['book_id']
+    ]
+    
+    # Esegui la suite di aggiornamento
+    tester.run_update_test_suite(created_ids)
+    
+    # Stampa il riepilogo e salva i risultati
+    tester.print_summary()
+    
+    # Determina se l'LLM è stato usato per il nome del file
+    llm_suffix = "_llm" if use_llm_mapper else "_keyword"
+    tester.save_results_to_csv(f"performance_results{llm_suffix}_run2_others.csv")
 
     print("-" * 60)
-    logger.info("Operazioni dimostrative completate.")
-    '''
+    logger.info("Operazioni di test completate.")
 
 if __name__ == '__main__':
     main()

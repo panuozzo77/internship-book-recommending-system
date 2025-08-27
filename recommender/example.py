@@ -125,8 +125,8 @@ if __name__ == "__main__":
     PathRegistry().set_path('config_file', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/config.json')
     PathRegistry().set_path('processed_datasets_dir', '/home/cristian/Documents/projects/pyCharm/internship-book-recommending-system/recommendation')
     # Eseguire per usare il raccomandatore a livello utente
-    run_recommender_for_user('8842281e1d1347389f2ab93d60773d4d')
+    #run_recommender_for_user('8842281e1d1347389f2ab93d60773d4d')
 
-    #build_and_save_model_2()
+    build_and_save_model_2()
 
     #generate_user_profile_chart('8842281e1d1347389f2ab93d60773d4d')

@@ -307,7 +307,7 @@ def create_app(app_config: Dict[str, Any]):
             return redirect(url_for('login'))
 
         db = get_db()
-        if not db:
+        if db is None:
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
 
@@ -336,7 +336,7 @@ def create_app(app_config: Dict[str, Any]):
             return redirect(url_for('login'))
 
         db = get_db()
-        if not db:
+        if db is None:
             flash("Database connection not available.", "danger")
             return redirect(url_for('index'))
             
@@ -434,7 +434,7 @@ def create_app(app_config: Dict[str, Any]):
         # Get Content-Based recommendations
         content_based_recommendations = []
         try:
-            content_recs = recommender_facade.recommend_with_content_based(username, top_n=5)
+            content_recs = recommender_facade.recommend_with_content_based(username, top_n=6)
             if content_recs:
                 for title in content_recs:
                     book_id = book_repo.get_book_id_by_title(title)
@@ -448,7 +448,7 @@ def create_app(app_config: Dict[str, Any]):
         # Get Collaborative Filtering recommendations
         collaborative_recommendations = []
         try:
-            collaborative_recs = recommender_facade.recommend_with_collaborative_filtering(username, top_n=5)
+            collaborative_recs = recommender_facade.recommend_with_collaborative_filtering(username, top_n=6)
             if collaborative_recs:
                 for title in collaborative_recs:
                     book_id = book_repo.get_book_id_by_title(title)

@@ -2,7 +2,7 @@
 from typing import Final
 
 # --- Model Configuration ---
-VECTOR_SIZE: Final[int] = 500
+VECTOR_SIZE: Final[int] = 4500
 ANNOY_METRIC: Final[str] = 'angular' # Cosine distance
 ANNOY_N_TREES: Final[int] = 50
 
@@ -17,5 +17,6 @@ MODEL_ARTIFACTS_DIR_KEY: Final[str] = 'processed_datasets_dir'
 MODEL_FILENAME_TEMPLATE: Final[str] = 'recommender_model_v{version}.joblib'
 
 # --- Collaborative Filtering Configuration ---
-COLLABORATIVE_N_NEIGHBORS: Final[int] = 15 # Number of similar users to consider
+COLLABORATIVE_N_NEIGHBORS: Final[int] = 35 # Number of similar users to consider
 COLLABORATIVE_MIN_COMMON_BOOKS: Final[int] = 3 # Min books in common to be a valid neighbor
+COLLABORATIVE_MIN_VALID_NEIGHBORS: Final[int] = 0
