@@ -75,7 +75,7 @@ Il sistema è strutturato in moduli specializzati che collaborano seguendo princ
 ### Risultati di Performance
 - **Precision@10**: 0.0061 (Content-Based), 0.0182 (Collaborative)  
 - **Recall@10**: 0.0122 (Content-Based), 0.0363 (Collaborative)
-- **Copertura Catalogo**: 0.85% con raccomandazioni diversificate
+- **Copertura Catalogo**: 0.85% con raccomandazioni diversificate (usando 1000 dei 400'000 utenti)
 - **Valutazione Qualitativa**: 3.7/5 interesse medio (27 beta-tester)
 
 ## 🚀 Installazione e Configurazione
